@@ -3,21 +3,17 @@ Reinsurance Modeling and Pricing in Python!
 
 ## Getting Started
 
-Install rippy from pypi...
+Install rippy from pypi:
 
 ```pip install rippy```
 
-..and run the example project:
-
-```python example.py```
-
 ## Introduction
 
-Rippy is a simple, fast simulation-based reinsurance modeling package. It has two main components:
+Rippy is a simple, fast and lightweight simulation-based reinsurance modeling package. It has two main components:
 
 1. Frequency-Severity, otherwise known as compound distribution simulation
 
-    Rippy contains a class ```FrequencySeverityModel``` to set up and simulate from compound distributions with a variety of frequency and severity distributions
+    Rippy contains the ```FrequencySeverityModel``` class to set up and simulate from compound distributions with a variety of frequency and severity distributions
 
     ```python
     from rippy import FrequencySeverityModel, Distributions
