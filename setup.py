@@ -5,12 +5,12 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="rippy",                     # This is the name of the package
-    version="0.0.1",                        # The initial release version
+    version="0.0.5",                        # The initial release version
     author="James Norman",                     # Full name of the author
     description="Reinsurance Pricing in Python",
     long_description=long_description,      # Long description read from the the readme file
     long_description_content_type="text/markdown",
-    packages=setuptools.find_packages(),    # List of all python modules to be installed
+    packages=setuptools.find_packages(where='rippy'),    # List of all python modules to be installed
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
@@ -19,9 +19,11 @@ setuptools.setup(
     python_requires='>=3.10',                # Minimum version requirement of the package
     py_modules=["rippy"],             # Name of the python package
     package_dir={'':'.'},     # Directory of the source code of the package
-    install_requires=[] ,                    # Install other dependencies if any
+    install_requires=['numpy','scipy'] ,                    # Install other dependencies if any
     project_urls={  # Optional
         "Bug Reports": "https://github.com/ProteusLLP/rippy/issues",
         "Source": "https://github.com/ProteusLLP/rippy",
+    
     },
+    keywords='reinsurance, actuarial, insurance',
 )

@@ -26,7 +26,7 @@ Rippy is a simple, fast and lightweight simulation-based reinsurance modeling pa
 
    ```python
    from rippy import XoL
-   xol_layer = XoL(limit=100000,excess=100000)
+   xol_layer = XoL(name="Layer 1", limit=1000000, excess=100000, premium=1000)
    xol_layer.apply(claims)
    xol_layer.print_summary()
     ```

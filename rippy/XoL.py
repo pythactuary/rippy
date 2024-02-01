@@ -94,6 +94,7 @@ class XoL:
             np.maximum(claims - self.excess, 0), self.limit
         )
         if self.aggregate_limit is None and self.aggregate_deductible is None:
+            self.calc_summary(claims,individual_recoveries_pre_aggregate,individual_recoveries_pre_aggregate.aggregate())
             return ContractResults(individual_recoveries_pre_aggregate,None)
         aggregate_limit = (
             self.aggregate_limit if self.aggregate_limit is not None else np.inf
