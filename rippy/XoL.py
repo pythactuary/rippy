@@ -2,7 +2,6 @@ import numpy as np
 from .FreqSevSims import FreqSevSims
 from dataclasses import dataclass
 
-
 @dataclass
 class ContractResults:
     def __init__(self, recoveries: FreqSevSims, reinstatement_premium: np.ndarray):
@@ -50,9 +49,11 @@ class XoL:
             aggregate_limit / limit - 1 if aggregate_limit is not None else None
         )
         self.reinstatement_premium_cost = (
-            np.array(reinstatement_cost) if reinstatement_cost is not None else None
+            np.array(reinstatement_cost)
+            if reinstatement_cost is not None
+            else None
         )
-
+        
     def apply(self, claims: FreqSevSims) -> ContractResults:
         """
         Apply the XoL contract to a set of claims.
@@ -66,7 +67,7 @@ class XoL:
         Calculation of the recoveries from the excess of loss contract:
 
         Firstly, the effect of any franchise or reverse franchise is calculated on the individual losses.
-
+         
         losses post franchise = loss if loss >= franchise and loss<= reverse franchise
 
         Next the individual losses to the layer are calculated:
@@ -86,18 +87,14 @@ class XoL:
         # apply franchise
         if self.franchise is not None or self.reverse_franchise is not None:
             franchise = self.franchise if self.franchise is not None else 0
-            reverse_franchise = (
-                self.reverse_franchise if self.reverse_franchise is not None else np.inf
-            )
-            claims = np.where(
-                (claims >= franchise) & (claims < reverse_franchise), claims, 0
-            )
-
+            reverse_franchise = self.reverse_franchise if self.reverse_franchise is not None else np.inf
+            claims = np.where((claims>=franchise) & (claims<reverse_franchise),claims,0)
+            
         individual_recoveries_pre_aggregate = np.minimum(
             np.maximum(claims - self.excess, 0), self.limit
         )
         if self.aggregate_limit is None and self.aggregate_deductible is None:
-            return ContractResults(individual_recoveries_pre_aggregate, None)
+            return ContractResults(individual_recoveries_pre_aggregate,None)
         aggregate_limit = (
             self.aggregate_limit if self.aggregate_limit is not None else np.inf
         )
@@ -105,44 +102,55 @@ class XoL:
             self.aggregate_deductible if self.aggregate_deductible is not None else 0
         )
         aggregate_recoveries_pre_agg = individual_recoveries_pre_aggregate.aggregate()
-
+        
         aggregate_recoveries = np.minimum(
             np.maximum(aggregate_recoveries_pre_agg - aggregate_deductible, 0),
             aggregate_limit,
         )
-        ratio = np.where(
-            aggregate_recoveries_pre_agg == 0,
-            1,
-            np.divide(
-                aggregate_recoveries,
-                aggregate_recoveries_pre_agg,
-                where=aggregate_recoveries_pre_agg != 0,
-            ),
-        )
-        recoveries = individual_recoveries_pre_aggregate * ratio
+        ratio = np.where(aggregate_recoveries_pre_agg==0,1,np.divide(aggregate_recoveries,aggregate_recoveries_pre_agg,where=aggregate_recoveries_pre_agg!=0))
+        recoveries = individual_recoveries_pre_aggregate*ratio
         results = ContractResults(recoveries, None)
         if self.reinstatement_premium_cost is not None:
             cumulative_reinstatement_cost = np.cumsum(self.reinstatement_premium_cost)
             limits_used = aggregate_recoveries / self.limit
-            reinstatements_used = np.minimum(limits_used, self.num_reinstatements)
-            reinstatements_used_full = np.floor(reinstatements_used).astype(int)
+            reinstatements_used = np.minimum(
+                limits_used, self.num_reinstatements
+            )
+            reinstatements_used_full = np.floor(
+                reinstatements_used
+            ).astype(int)
             reinstatements_used_fraction = (
                 reinstatements_used - reinstatements_used_full
             )
-            reinstatement_number = np.maximum(reinstatements_used_full - 1, 0)
+            reinstatement_number = np.maximum(reinstatements_used_full-1,0)
             reinstatement_premium_proportion = self.reinstatement_premium_cost[
-                reinstatement_number
-            ] * reinstatements_used_fraction + np.where(
-                reinstatements_used_full > 0,
-                cumulative_reinstatement_cost[reinstatement_number],
-                0,
-            )
+                    reinstatement_number
+                ]* reinstatements_used_fraction + np.where(reinstatements_used_full>0,
+                cumulative_reinstatement_cost[
+                    reinstatement_number
+                ],0)
 
             reinstatement_premium = reinstatement_premium_proportion * self.premium
             results.reinstatement_premium = reinstatement_premium
 
-        self.calc_summary(claims, recoveries, aggregate_recoveries)
+        self.calc_summary(claims,recoveries,aggregate_recoveries)
         return results
+    
+    def calc_summary(self, gross_losses,losses,aggregate_lossses):
+        self.summary = {
+            "mean": aggregate_lossses.mean(),
+            "std": aggregate_lossses.std(),
+            "prob_attach": np.sum((aggregate_lossses > 0))
+            / len(aggregate_lossses),
+            "prob_vert_exhaust": np.sum((gross_losses.values >= self.limit+self.excess))
+            / len(losses.values),
+            "prob_horizonal_exhaust": (
+                np.sum((aggregate_lossses >= self.aggregate_limit))
+                / len(aggregate_lossses)
+                if self.aggregate_limit is not None
+                else 0
+            ),
+        }
 
     def print_summary(self):
         """Print a summary of the losses to the layer"""
@@ -202,15 +210,13 @@ class XoLTower:
         for layer in self.layers:
             layer_results = layer.apply(claims)
             recoveries += layer_results.recoveries
-            reinstatement_premium += (
-                layer_results.reinstatement_premium
-                if layer_results.reinstatement_premium is not None
-                else 0
-            )
+            reinstatement_premium +=layer_results.reinstatement_premium if layer_results.reinstatement_premium is not None else 0
 
-        return ContractResults(recoveries, reinstatement_premium)
+        
+        return ContractResults(recoveries,reinstatement_premium)
 
     def print_summary(self):
         """Print a summary of the program losses"""
         for layer in self.layers:
             layer.print_summary()
+        

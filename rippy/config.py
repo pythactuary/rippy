@@ -11,5 +11,5 @@ def set_default_n_sims(n):
     config.n_sims = n
 
 
-def set_seed(seed):
+def set_random_seed(seed):
     config.rng.bit_generator.state = type(config.rng.bit_generator)(seed).state

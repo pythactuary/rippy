@@ -72,7 +72,7 @@ The global number of simulations can be changed from the ```config``` class (the
 
 ```python
 from rippy import config
-config.set_default_num_sims(1000000)
+config.n_sims = 1000000
 ```
 
 The global random seed can also be configured from the ```config``` class
