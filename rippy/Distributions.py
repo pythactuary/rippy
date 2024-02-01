@@ -160,17 +160,17 @@ class Distributions:
             """Calculates the inverse cdf of the Normal Distribution"""
             return scipy.stats.norm.ppf(u, loc=self.mu, scale=self.sigma)
 
-    class Gamma(Distribution):
-        """Gamma Distribution"""
+    class Pareto(Distribution):
+        """Paretp Distribution"""
 
         def __init__(self, shape, scale):
             self.shape = shape
             self.scale = scale
 
         def cdf(self, x):
-            """Calculates the cdf of the Gamma distribution"""
-            return 1 - np.random.gamma.cdf(x, a=self.shape, scale=self.scale)
+            """Calculates the cdf of the Pareto distribution"""
+            return 1-(x/self.scale)**(-self.shape)
 
         def invcdf(self, u) -> np.ndarray | float:
-            """Calculates the inverse cdf of the Gamma distribution"""
-            return np.random.gamma.ppf(1 - u, a=self.shape, scale=self.scale)
+            """Calculates the inverse cdf of the Pareto distribution"""
+            return (1-u)**(-1/self.shape)*self.scale
