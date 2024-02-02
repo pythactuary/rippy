@@ -16,6 +16,7 @@ losses_with_LAE = (
     losses_post_cap * 1.05
 )  # you can apply standard numerical operations to the losses
 stochastic_inflation = Distributions.Normal(0.05, 0.02).generate()
+
 gross_losses = losses_with_LAE * (
     1 + stochastic_inflation
 )  # you can multiply frequency severity losses with other standard simulations
@@ -24,10 +25,10 @@ gross_losses = losses_with_LAE * (
 prog = XoLTower(
     limit=[1000000, 1000000, 1000000, 1000000, 1000000],
     excess=[1000000, 2000000, 3000000, 4000000, 5000000],
-    aggregate_limit=[2000000, 2000000, 1000000, 1000000, 1000000],
+    aggregate_limit=[3000000, 2000000, 1000000, 1000000, 1000000],
     aggregate_deductible=[0, 0, 0, 0, 0],
     premium=[5, 4, 3, 2, 1],
-    reinstatement_cost=[[1, 0.5], [1, 1], None, None, None],
+    reinstatement_cost=[[1, 0.5], [1], None, None, None],
 )
 
 recoveries = prog.apply(gross_losses)

@@ -54,8 +54,6 @@ class FreqSevSims:
             raise NotImplementedError
         args = tuple(x.values if isinstance(x, FreqSevSims) else x for x in args)
         result = func(*args, **kwargs)
-        print("trying array function")
-        print(args)
         return FreqSevSims(self.sim_index, result, self.n_sims)
 
     def __add__(self, x):
@@ -64,7 +62,6 @@ class FreqSevSims:
         elif isinstance(x, int) or isinstance(x, float):
             return FreqSevSims(self.sim_index, self.values + x, self.n_sims)
         elif isinstance(x, np.ndarray):
-            print(self.sim_index)
             return FreqSevSims(
                 self.sim_index, self.values + x[self.sim_index], self.n_sims
             )
@@ -162,9 +159,6 @@ class FreqSevSims:
         if _is_compatible(self, other):
             return FreqSevSims(self.sim_index, self.values >= other.values, self.n_sims)
         elif isinstance(other, int) or isinstance(other, float):
-            print("trying ge")
-            print(self.values >= other)
-            print(FreqSevSims(self.sim_index, self.values >= other, self.n_sims))
             return FreqSevSims(self.sim_index, self.values >= other, self.n_sims)
         elif isinstance(other, np.ndarray):
             return FreqSevSims(
@@ -187,7 +181,6 @@ class FreqSevSims:
 
     def __and__(self, other):
         if _is_compatible(self, other):
-            print("testing and")
             return FreqSevSims(
                 self.sim_index, (self.values) & (other.values), self.n_sims
             )
@@ -196,10 +189,8 @@ class FreqSevSims:
             or isinstance(other, float)
             or isinstance(other, bool)
         ):
-            print("testing and with int")
             return FreqSevSims(self.sim_index, (self.values) & other, self.n_sims)
         elif isinstance(other, np.ndarray):
-            print("testing and with ndarray")
             return FreqSevSims(
                 self.sim_index, (self.values) & (other[self.sim_index]), self.n_sims
             )
@@ -211,7 +202,6 @@ class FreqSevSims:
 
     def __or__(self, other):
         if _is_compatible(self, other):
-            print("testing and")
             return FreqSevSims(
                 self.sim_index, (self.values) | (other.values), self.n_sims
             )
@@ -220,10 +210,8 @@ class FreqSevSims:
             or isinstance(other, float)
             or isinstance(other, bool)
         ):
-            print("testing and with int")
             return FreqSevSims(self.sim_index, (self.values) | other, self.n_sims)
         elif isinstance(other, np.ndarray):
-            print("testing and with ndarray")
             return FreqSevSims(
                 self.sim_index, (self.values) | (other[self.sim_index]), self.n_sims
             )
