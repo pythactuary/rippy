@@ -1,7 +1,7 @@
-from rippy import Distributions, FrequencySeverityModel, config, XoLTower, loss_summary
+from rippy import Distributions, FrequencySeverityModel, config, XoLTower
 import numpy as np
 
-config.n_sims = 100000
+config.n_sims = 1000000
 
 sev_dist = Distributions.GPD(0.33, 100000, 1000000)
 freq_dist = Distributions.Poisson(5)
@@ -11,7 +11,6 @@ policy_limit = 5000000
 losses_post_cap = np.minimum(
     losses_pre_cap, policy_limit
 )  # you can apply standard numpy ufuncs to the losses
-
 losses_with_LAE = (
     losses_post_cap * 1.05
 )  # you can apply standard numerical operations to the losses

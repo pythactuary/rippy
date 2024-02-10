@@ -1,6 +1,7 @@
-import numpy as np
+from .config import config, xp
 from .FreqSevSims import FreqSevSims
 from dataclasses import dataclass
+import numpy as np
 
 @dataclass
 class ContractResults:
@@ -49,11 +50,12 @@ class XoL:
             aggregate_limit / limit - 1 if aggregate_limit is not None else None
         )
         self.reinstatement_premium_cost = (
-            np.array(reinstatement_cost)
+            xp.array(reinstatement_cost)
             if reinstatement_cost is not None
             else None
         )
-        
+    
+    
     def apply(self, claims: FreqSevSims) -> ContractResults:
         """
         Apply the XoL contract to a set of claims.
@@ -108,7 +110,7 @@ class XoL:
             np.maximum(aggregate_recoveries_pre_agg - aggregate_deductible, 0),
             aggregate_limit,
         )
-        ratio = np.where(aggregate_recoveries_pre_agg==0,1,np.divide(aggregate_recoveries,aggregate_recoveries_pre_agg,where=aggregate_recoveries_pre_agg!=0))
+        ratio = np.where(aggregate_recoveries_pre_agg==0,1,np.divide(aggregate_recoveries,aggregate_recoveries_pre_agg))
         recoveries = individual_recoveries_pre_aggregate*ratio
         results = ContractResults(recoveries, None)
         if self.reinstatement_premium_cost is not None:
@@ -133,20 +135,24 @@ class XoL:
 
             reinstatement_premium = reinstatement_premium_proportion * self.premium
             results.reinstatement_premium = reinstatement_premium
-
         self.calc_summary(claims,recoveries,aggregate_recoveries)
         return results
     
-    def calc_summary(self, gross_losses,losses,aggregate_lossses):
+    def calc_summary(self, gross_losses,losses,aggregate_lossses: np.ndarray):
+        mean = aggregate_lossses.mean()
+        sd = aggregate_lossses.std()
+        count = np.sum((aggregate_lossses > 0).astype(np.float64))
+        v_count = np.sum((gross_losses.values >= self.limit+self.excess).astype(np.float64))
+        h_count = np.sum((aggregate_lossses >= self.aggregate_limit).astype(np.float64))
         self.summary = {
-            "mean": aggregate_lossses.mean(),
-            "std": aggregate_lossses.std(),
-            "prob_attach": np.sum((aggregate_lossses > 0))
+            "mean": mean,
+            "std": sd,
+            "prob_attach": count
             / len(aggregate_lossses),
-            "prob_vert_exhaust": np.sum((gross_losses.values >= self.limit+self.excess))
+            "prob_vert_exhaust": v_count
             / len(losses.values),
             "prob_horizonal_exhaust": (
-                np.sum((aggregate_lossses >= self.aggregate_limit))
+                h_count
                 / len(aggregate_lossses)
                 if self.aggregate_limit is not None
                 else 0
@@ -167,7 +173,7 @@ class XoL:
             "Probability of Horizontal Exhaustion: ",
             self.summary["prob_horizonal_exhaust"],
         ),
-        print("")
+        print("") 
 
 
 class XoLTower:
@@ -207,7 +213,7 @@ class XoLTower:
     def apply(self, claims: FreqSevSims) -> FreqSevSims:
         """Apply the XoL contract to a set of claims"""
         recoveries = claims.copy() * 0
-        reinstatement_premium = np.zeros(claims.n_sims)
+        reinstatement_premium = xp.zeros(claims.n_sims)
         for layer in self.layers:
             layer_results = layer.apply(claims)
             recoveries += layer_results.recoveries

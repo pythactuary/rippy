@@ -1,6 +1,6 @@
 from collections.abc import Iterable
-import numpy as np
-
+from .config import config, xp as np
+import numpy
 
 def _is_compatible(self, other):
     return isinstance(other, FreqSevSims) and self.sim_index is other.sim_index
@@ -25,8 +25,9 @@ class FreqSevSims:
 
     def aggregate(self):
         """Calculates the aggregate loss for each simulation"""
-        return np.bincount(self.sim_index, self.values, self.n_sims)
-
+        result = np.zeros(self.n_sims)
+        np.add.at(result,self.sim_index, self.values)
+        return result
     def occurrence(self):
         """Calculates the maximum occurrence loss for each simulation"""
         result = np.zeros(self.n_sims)
@@ -50,7 +51,7 @@ class FreqSevSims:
         return FreqSevSims(self.sim_index, result, self.n_sims)
 
     def __array_function__(self, func: np.ufunc, types, args, kwargs):
-        if func not in (np.where,):
+        if func not in (numpy.where,numpy.maximum):
             raise NotImplementedError
         args = tuple(x.values if isinstance(x, FreqSevSims) else x for x in args)
         result = func(*args, **kwargs)

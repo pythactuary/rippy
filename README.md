@@ -32,7 +32,7 @@ Rippy is a simple, fast and lightweight simulation-based reinsurance modeling pa
     ```
 
 
-Rippy is based on the scientific python stack of numpy and scipy. It is designed for interoperability with numpy and ndarrays, so for example the simulated claims can be operated on with
+Rippy is based on the scientific python stack of numpy and scipy for fast performance. It can optionally run on a GPU for extremely fast performance. It is designed for interoperability with numpy and ndarrays, so for example the simulated claims can be operated on with
 numpy ufuncs:
 
 ```python
@@ -79,6 +79,23 @@ config.set_random_seed(123456)
 
 Rippy uses the ```default_rng``` class of the ```numpy.random``` module. This can also be configured using the ```config.rng``` property.
 
+### Using a GPU
+
+GPU support requires a CUDA compatible GPU. Internally rippy uses the cupy library. Install the dependencies by running
+
+```
+pip install rippy[gpu]
+```
+
+To enable GPU mode, set the RIPPY_USE_GPU environment variable to 1.
+```linux
+export RIPPY_USE_GPU=1
+```
+on Linux or
+```
+set RIPPY_USE_GPU=1
+```
+on Windows. Set it to anythin else to revert to using a CPU
 
 
 ## Project Status
@@ -90,7 +107,6 @@ Rippy is currently a proof of concept. There are a limited number of supported d
 * Adding support for more reinsurance contract types (Surplus, Stop Loss etc)
 * Grouping reinsurance contracts into programs and structures
 * Stratified sampling and Quasi-Monte Carlo methods
-* GPU support
 * Reporting dashboards
 
 ## Issues
