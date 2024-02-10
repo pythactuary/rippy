@@ -143,7 +143,7 @@ class XoL:
         sd = aggregate_recoveries.std()
         count = np.sum((aggregate_recoveries > 0).astype(np.float64))
         v_count = np.sum((gross_losses.values >= self.limit+self.excess).astype(np.float64))
-        h_count = np.sum((aggregate_recoveries >= self.aggregate_limit).astype(np.float64))
+        h_count = np.sum((aggregate_recoveries >= self.aggregate_limit).astype(np.float64)) if self.aggregate_limit is not None else 0
         self.summary = {
             "mean": mean,
             "std": sd,
