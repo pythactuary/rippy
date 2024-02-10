@@ -96,7 +96,7 @@ class XoL:
             np.maximum(claims - self.excess, 0), self.limit
         )
         if self.aggregate_limit is None and self.aggregate_deductible is None:
-            self.calc_summary(claims,individual_recoveries_pre_aggregate,individual_recoveries_pre_aggregate.aggregate())
+            self.calc_summary(claims,individual_recoveries_pre_aggregate.aggregate())
             return ContractResults(individual_recoveries_pre_aggregate,None)
         aggregate_limit = (
             self.aggregate_limit if self.aggregate_limit is not None else np.inf
@@ -135,25 +135,25 @@ class XoL:
 
             reinstatement_premium = reinstatement_premium_proportion * self.premium
             results.reinstatement_premium = reinstatement_premium
-        self.calc_summary(claims,recoveries,aggregate_recoveries)
+        self.calc_summary(claims,aggregate_recoveries)
         return results
     
-    def calc_summary(self, gross_losses,losses,aggregate_lossses: np.ndarray):
-        mean = aggregate_lossses.mean()
-        sd = aggregate_lossses.std()
-        count = np.sum((aggregate_lossses > 0).astype(np.float64))
+    def calc_summary(self, gross_losses,aggregate_recoveries: np.ndarray):
+        mean = aggregate_recoveries.mean()
+        sd = aggregate_recoveries.std()
+        count = np.sum((aggregate_recoveries > 0).astype(np.float64))
         v_count = np.sum((gross_losses.values >= self.limit+self.excess).astype(np.float64))
-        h_count = np.sum((aggregate_lossses >= self.aggregate_limit).astype(np.float64))
+        h_count = np.sum((aggregate_recoveries >= self.aggregate_limit).astype(np.float64))
         self.summary = {
             "mean": mean,
             "std": sd,
             "prob_attach": count
-            / len(aggregate_lossses),
+            / len(aggregate_recoveries),
             "prob_vert_exhaust": v_count
-            / len(losses.values),
+            / len(gross_losses.values),
             "prob_horizonal_exhaust": (
                 h_count
-                / len(aggregate_lossses)
+                / len(aggregate_recoveries)
                 if self.aggregate_limit is not None
                 else 0
             ),
