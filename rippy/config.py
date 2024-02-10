@@ -1,10 +1,20 @@
-import numpy as np
+import os
+
+use_gpu = os.environ.get("RIPPY_USE_GPU")=="1"
+
+if use_gpu:
+    import cupy as xp
+    print("Using GPU")
+else:
+    import numpy as xp
+    xp.seterr(divide='ignore')
+
 
 
 class config:
     n_sims = 10000
     seed = 123456789
-    rng = np.random.default_rng(seed)
+    rng = xp.random.default_rng(seed)
 
 
 def set_default_n_sims(n):

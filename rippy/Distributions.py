@@ -1,8 +1,9 @@
-from .config import config
-from scipy.stats import poisson, nbinom
-import scipy.stats
+from .config import config, xp as np, use_gpu
+if use_gpu:
+    import cupyx.scipy.special as special
+else:
+    import scipy.special as special
 from abc import ABC, abstractmethod
-import numpy as np
 
 
 class Distributions:
@@ -21,6 +22,7 @@ class Distributions:
         ) -> np.ndarray:
             if n_sims is None:
                 n_sims = config.n_sims
+
             return self.invcdf(rng.uniform(size=n_sims))
 
     class DiscreteDistribution(Distribution):
@@ -41,11 +43,11 @@ class Distributions:
 
         def cdf(self, x):
             """Calculates the cumulative distribution function of the Poisson distribution"""
-            return poisson.cdf(x, self.mean)
+            return special.pdtr(x, self.mean)
 
         def invcdf(self, u) -> np.ndarray | float:
             """Calculates the inverse cumulative distribution function of the Poisson distribution"""
-            return poisson.ppf(u, self.mean)
+            return special.pdtri(u, self.mean)
 
         def generate(self, n_sims=None, rng: np.random.Generator = config.rng):
             """Generates random samples from the Poisson distribution"""
@@ -62,11 +64,11 @@ class Distributions:
 
         def cdf(self, x):
             """Calculates the cumulative distribution function of the Negative Binomial distribution"""
-            return nbinom.cdf(x, self.n, self.p)
+            return special.nbdtr(x, self.n, self.p)
 
         def invcdf(self, u) -> np.ndarray | float:
             """Calculates the inverse cumulative distribution function of the Negative Binomial  distribution"""
-            return nbinom.ppf(u, self.n, self.p)
+            return special.nbdtri(u, self.n, self.p)
 
         def generate(self, n_sims=None, rng: np.random.Generator = config.rng):
             """Generates random samples from the Negative Binomial  distribution"""
@@ -154,11 +156,11 @@ class Distributions:
 
         def cdf(self, x):
             """Calculates the cdf of the Normal Distribution"""
-            return scipy.stats.norm.cdf(x, loc=self.mu, scale=self.sigma)
+            return special.ndtr( (x-self.mu)/self.sigma)
 
         def invcdf(self, u) -> np.ndarray | float:
             """Calculates the inverse cdf of the Normal Distribution"""
-            return scipy.stats.norm.ppf(u, loc=self.mu, scale=self.sigma)
+            return special.ndtr( u)*self.sigma+self.mu
 
     class Pareto(Distribution):
         """Paretp Distribution"""

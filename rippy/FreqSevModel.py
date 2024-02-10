@@ -1,7 +1,6 @@
-import numpy as np
 from .FreqSevSims import FreqSevSims
 from .Distributions import Distributions
-from .config import config
+from .config import config, xp as np
 
 
 def get_sims_of_events(n_events: np.ndarray):
@@ -25,5 +24,5 @@ class FrequencySeverityModel:
             n_sims = config.n_sims
         n_events = self.freq_dist.generate(n_sims, rng)
         total_events = n_events.sum()
-        sev = self.sev_dist.generate(total_events, rng)
+        sev = self.sev_dist.generate(int(total_events), rng)
         return FreqSevSims(get_sims_of_events(n_events), sev, n_sims)

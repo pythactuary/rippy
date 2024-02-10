@@ -25,5 +25,6 @@ setuptools.setup(
         "Source": "https://github.com/ProteusLLP/rippy",
     
     },
+    extras_require={"gpu":["cupy-cuda11x"]},
     keywords='reinsurance, actuarial, insurance',
 )
