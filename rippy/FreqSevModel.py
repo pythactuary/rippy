@@ -1,9 +1,9 @@
 from .FreqSevSims import FreqSevSims
-from .Distributions import Distributions
+import rippy.Distributions as Distributions
 from .config import config, xp as np
 
 
-def get_sims_of_events(n_events: np.ndarray):
+def _get_sims_of_events(n_events: np.ndarray):
     cumulative = n_events.cumsum()
     total_events = cumulative[-1]
     event_no = np.arange(total_events)
@@ -25,4 +25,4 @@ class FrequencySeverityModel:
         n_events = self.freq_dist.generate(n_sims, rng)
         total_events = n_events.sum()
         sev = self.sev_dist.generate(int(total_events), rng)
-        return FreqSevSims(get_sims_of_events(n_events), sev, n_sims)
+        return FreqSevSims(_get_sims_of_events(n_events), sev, n_sims)
