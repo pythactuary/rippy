@@ -1,4 +1,5 @@
-from rippy import Distributions, FrequencySeverityModel, config, XoLTower
+from rippy import Distributions, config, XoLTower
+from rippy.FrequencySeverity import FrequencySeverityModel
 import numpy as np
 
 config.n_sims = 1000000
