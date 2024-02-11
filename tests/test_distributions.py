@@ -1,8 +1,11 @@
 from rippy import Distributions
+from rippy.config import set_random_seed
 import pytest
 import math
 import scipy.special
+import numpy as np
 
+set_random_seed(12345678910)
 
 def test_GPD():
     shape = 0.25
@@ -69,3 +72,21 @@ def test_LogLogistic():
         * scale,
         1e-3,
     )
+
+from scipy.special import gamma
+
+def test_ParaLogistic():
+    shape = 2.5
+    scale = 100000
+    loc = 1000000
+    dist = Distributions.ParaLogistic(shape, scale, loc)
+
+    assert dist.cdf(1000000) == 0.0
+    assert dist.invcdf(0) == 1000000
+    assert dist.invcdf(dist.cdf(np.array([1234560.1, 2345670, 3456780])) ) == pytest.approx(np.array([1234560.1, 2345670, 3456780]), 1e-8)
+
+    sims = dist.generate(100000000)
+
+    assert sims.mean() == pytest.approx(scale * gamma(1 + 1 / shape)* gamma(shape - 1 / shape)/gamma(shape) + loc, 1e-5)
+
+
