@@ -25,9 +25,9 @@ FrequencySeverity
     :no-heading:
 
 
-XoL
+Contracts
 ---
 
-.. automodapi:: rippy.XoL
+.. automodapi:: rippy.Contracts
     :no-inheritance-diagram:
     :no-heading:

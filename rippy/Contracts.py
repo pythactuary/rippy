@@ -183,6 +183,7 @@ class XoL:
 
     def print_summary(self):
         """Print a summary of the losses to the layer
+        
         >>> layer.print_summary()
         Layer Name : Layer 1
         Mean Recoveries:  100000.0
