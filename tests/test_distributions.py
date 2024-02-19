@@ -7,6 +7,7 @@ import numpy as np
 
 set_random_seed(12345678910)
 
+
 def test_GPD():
     shape = 0.25
     scale = 100000
