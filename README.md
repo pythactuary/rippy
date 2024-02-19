@@ -1,5 +1,5 @@
 # rippy
-Reinsurance Modeling and Pricing in Python!
+ReInsurance Pricing in PYthon!
 
 ## Getting Started
 
