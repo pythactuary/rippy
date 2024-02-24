@@ -271,14 +271,57 @@ class Burr(Distribution):
             + self.loc
         )
 
-def _inverse_burr_invcdf(u,scale,shape,power,loc):
-    if u == 0:
-            return loc
-    return (
-            scale
-            * ((u ** (-1 / shape) - 1) ** (-1 / power))
-            + loc
-        )
+
+class Beta(Distribution):
+    r"""Beta distribution
+    
+    The Beta Distribution is defined through the cumulative distribution function:
+    
+    .. math::
+
+        F(x) =    \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} \int_0^x u^{\alpha-1}(1-u)^{\beta-1} \\
+        
+    where :math:`u = \frac{x-\mu}{\sigma}`,:math:`\alpha` and :math:`\beta` are the shape parameters, :math:`\mu` is the location parameter, :math:`\sigma` is the scale parameter.
+
+    Args:
+            alpha (float): The alpha parameter.
+            beta (float): The beta parameter.
+            scale (float): The scale parameter.
+            loc (float): The location parameter.
+    
+    """
+
+    def __init__(self, alpha, beta, scale=1, loc=0):
+        
+        self.alpha = alpha
+        self.beta = beta
+        self.scale = scale
+        self.loc = loc
+
+    def cdf(self, x) -> np.ndarray | float:
+        """
+        Calculates the cumulative distribution function (CDF) of the Beta distribution.
+
+        Parameters:
+            x: The value at which to evaluate the CDF.
+
+        Returns:
+            u: The CDF value at the given x.
+        """
+        return special.betainc(self.alpha, self.beta, (x - self.loc) / self.scale)
+
+    def invcdf(self, u) -> np.ndarray | float:
+        """
+        Calculates the inverse cumulative distribution function (CDF) of the Beta distribution.
+
+        Parameters:
+            u (float or np.ndarray): The probability value(s) for which to calculate the inverse CDF.
+
+        Returns:
+            float or np.ndarray: The corresponding quantile(s) for the given probability value(s).
+        """
+        return special.betaincinv(self.alpha, self.beta, u) * self.scale + self.loc
+
 
 class InverseBurr(Distribution):
     r"""Inverse Burr Distribution

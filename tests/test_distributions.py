@@ -11,6 +11,29 @@ set_random_seed(12345678910)
 
 
 
+def test_Beta():
+    alpha = 2
+    beta = 3
+    scale = 10000000
+    loc = 1000000
+    dist = Distributions.Beta(alpha, beta, scale, loc)
+    assert dist.cdf(1000000) == 0.0
+    assert dist.invcdf(0) == 1000000
+    assert np.allclose(dist.invcdf(dist.cdf(np.array([1234560.1, 2345670, 3456780])) ) , np.array([1234560.1, 2345670, 3456780]), 1e-8)
+
+    sims = dist.generate(1000000)
+    assert np.allclose(sims.mean(),
+        alpha/(alpha+beta)*scale+loc, 1e-3
+    )
+    assert np.allclose(sims.std() ,
+        math.sqrt(
+            alpha*beta/((alpha+beta)**2*(alpha+beta+1))
+        )
+        * scale,
+        1e-3,
+    )
+
+
 def test_GPD():
     shape = 0.25
     scale = 100000
