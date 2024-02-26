@@ -748,3 +748,18 @@ class InverseExponential(Distribution):
             np.ndarray or float: The inverse CDF value(s) at the given u.
         """
         return  self.loc - self.scale * 1/(np.log(u))
+    
+
+class Uniform(Distribution):
+    r"Uniform Distribution"
+
+    def __init__(self,lower=0,upper=1):
+        self.lower = lower
+        self.upper= upper
+
+    def cdf(self,x):
+
+        return np.minimum(np.maximum((x-self.lower)/(self.upper-self.lower),0),1)
+    
+    def invcdf(self,u):
+        return self.lower+(self.upper-self.lower)*u
