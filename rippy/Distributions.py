@@ -1,4 +1,5 @@
-"""The Distributions module contains a number of classes for simulating from statistical distributions. The distributions mainly follow the convention of Klugman"""
+"""The Distributions module contains a number of classes for simulating from statistical distributions.
+The distributions mainly follow the convention of Klugman"""
 
 from .config import config, xp as np, _use_gpu
 

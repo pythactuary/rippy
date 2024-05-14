@@ -1,6 +1,7 @@
 from typing import Union
-from .config import config, xp as np
 import numpy
+
+from .config import config, xp as np
 from . import Distributions
 
 
