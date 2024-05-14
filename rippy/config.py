@@ -1,19 +1,22 @@
 import os
 
-_use_gpu = os.environ.get("RIPPY_USE_GPU")=="1"
+_use_gpu = os.environ.get("RIPPY_USE_GPU") == "1"
 
 if _use_gpu:
     import cupy as xp
+
     print("Using GPU")
 else:
     import numpy as xp
-    xp.seterr(divide='ignore')
+
+    xp.seterr(divide="ignore")
 
 
 class config:
     """
     Configuration class for Rippy.
     """
+
     n_sims = 10000
     seed = 123456789
     rng = xp.random.default_rng(seed)
