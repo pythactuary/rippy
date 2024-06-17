@@ -1,16 +1,13 @@
-import os
-
-os.environ["RIPPY_USE_GPU"] = "0"
 from rippy import Distributions
 from rippy.config import set_random_seed, xp as np
 import pytest
 import math
 import scipy.special
-
-set_random_seed(12345678910)
+from scipy.special import gamma
 
 
 def test_Beta():
+    set_random_seed(12345678910)
     alpha = 2
     beta = 3
     scale = 10000000
@@ -34,6 +31,7 @@ def test_Beta():
 
 
 def test_GPD():
+    set_random_seed(12345678910)
     shape = 0.25
     scale = 100000
     threshold = 1000000
@@ -51,6 +49,7 @@ def test_GPD():
 
 
 def test_Burr():
+    set_random_seed(12345678910)
     power = 2
     shape = 3
     scale = 100000
@@ -76,6 +75,7 @@ def test_Burr():
 
 
 def test_InverseBurr():
+    set_random_seed(12345678910)
     power = 4
     shape = 5
     scale = 100000
@@ -103,6 +103,7 @@ def test_InverseBurr():
 
 
 def test_LogLogistic():
+    set_random_seed(12345678910)
     shape = 4
     scale = 100000
     loc = 1000000
@@ -127,10 +128,8 @@ def test_LogLogistic():
     )
 
 
-from scipy.special import gamma
-
-
 def test_ParaLogistic():
+    set_random_seed(12345678910)
     shape = 2.5
     scale = 100000
     loc = 1000000
@@ -151,6 +150,7 @@ def test_ParaLogistic():
 
 
 def test_InverseParaLogistic():
+    set_random_seed(12345678910)
     shape = 5
     scale = 100000
     loc = 1000000
@@ -179,6 +179,7 @@ def test_InverseParaLogistic():
 
 
 def test_Weibull():
+    set_random_seed(12345678910)
     shape = 2
     scale = 1000000
     loc = 1000000
@@ -199,6 +200,7 @@ def test_Weibull():
 
 
 def test_InverseWeibull():
+    set_random_seed(12345678910)
     shape = 4
     scale = 1000000
     loc = 1000000
@@ -219,6 +221,7 @@ def test_InverseWeibull():
 
 
 def test_Exponential():
+    set_random_seed(12345678910)
     scale = 1000000
     loc = 1000000
     dist = Distributions.Exponential(scale, loc)
@@ -236,6 +239,7 @@ def test_Exponential():
 
 
 def test_InverseExponential():
+    set_random_seed(12345678910)
     scale = 1000000
     loc = 1000000
     dist = Distributions.InverseExponential(scale, loc)
@@ -246,10 +250,9 @@ def test_InverseExponential():
         dist.cdf(np.array([1234560.1, 2345670, 3456780]))
     ) == pytest.approx(np.array([1234560.1, 2345670, 3456780]), 1e-8)
 
-    sims = dist.generate(10000000)
-
 
 def test_Gamma():
+    set_random_seed(12345678910)
     scale = 1000000
     shape = 4.5
     loc = 1000000
@@ -270,6 +273,7 @@ def test_Gamma():
 
 
 def test_LogNormal():
+    set_random_seed(12345678910)
     mu = 8
     sigma = 1.25
     dist = Distributions.LogNormal(mu, sigma)
@@ -292,8 +296,9 @@ def test_LogNormal():
 
 
 def test_InverseGamma():
+    set_random_seed(12345678910)
     scale = 1000000
-    shape = 4.5
+    shape = 3.5
     loc = 1000000
     dist = Distributions.InverseGamma(shape, scale, loc)
 
