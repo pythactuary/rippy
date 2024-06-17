@@ -1,18 +1,23 @@
-from .config import config, xp
+from .config import xp
 from .FrequencySeverity import FreqSevSims
 from dataclasses import dataclass
 import numpy as np
 
+
 @dataclass
 class ContractResults:
-    """A class to hold the recoveries and reinstatement premiums resulting from applying a reinsurance contract to a set of claims."""
-    def __init__(self, recoveries: FreqSevSims, reinstatement_premium: np.ndarray):
+    """A class to hold the recoveries and reinstatement premiums resulting from applying a reinsurance contract to a
+    set of claims."""
+
+    def __init__(
+        self, recoveries: FreqSevSims, reinstatement_premium: np.ndarray | None = None
+    ):
         """
         Create a new contract results object.
 
         Args:
             recoveries (FreqSevSims): Object representing the recoveries.
-            reinstatement_premium (np.ndarray): Array representing the reinstatement premium.
+            reinstatement_premium (np.ndarray | None): Optional Array representing the reinstatement premium.
         """
         self.recoveries = recoveries
         self.reinstatement_premium = reinstatement_premium
@@ -20,6 +25,7 @@ class ContractResults:
 
 class XoL:
     """Represents an excess of loss reinsurance contract"""
+
     def __init__(
         self,
         name: str,
@@ -27,10 +33,10 @@ class XoL:
         excess: float,
         premium: float,
         reinstatement_cost: list[float] | None = None,
-        aggregate_limit: float = None,
-        aggregate_deductible: float = None,
-        franchise: float = None,
-        reverse_franchise: float = None,
+        aggregate_limit: float | None = None,
+        aggregate_deductible: float | None = None,
+        franchise: float | None = None,
+        reverse_franchise: float | None = None,
     ):
         """
         Initialize a new XoL layer.
@@ -40,7 +46,8 @@ class XoL:
             limit (float): The limit of coverage.
             excess (float): The excess amount.
             premium (float): The premium amount.
-            reinstatement_cost (list[float] | None, optional): The reinstatement cost as a fraction of the base premium, by reinstatement. Defaults to None.
+            reinstatement_cost (list[float] | None, optional): The reinstatement cost as a fraction of the base
+                premium, by reinstatement. Defaults to None.
             aggregate_limit (float, optional): The aggregate limit. Defaults to None.
             aggregate_deductible (float, optional): The aggregate deductible. Defaults to None.
             franchise (float, optional): The franchise amount. Defaults to None.
@@ -49,22 +56,25 @@ class XoL:
         self.name = name
         self.limit = limit
         self.excess = excess
-        self.aggregate_limit = aggregate_limit if aggregate_limit is not None else np.inf
+        self.aggregate_limit: float = (
+            aggregate_limit if aggregate_limit is not None else np.inf
+        )
         self.premium = premium
-        self.aggregate_deductible = aggregate_deductible if aggregate_deductible is not None else 0
-        self.franchise = franchise if franchise is not None else 0
-        self.reverse_franchise = reverse_franchise if reverse_franchise is not None else np.inf
-        self.summary = None
+        self.aggregate_deductible: float = (
+            aggregate_deductible if aggregate_deductible is not None else 0
+        )
+        self.franchise: float = franchise if franchise is not None else 0
+        self.reverse_franchise: float = (
+            reverse_franchise if reverse_franchise is not None else np.inf
+        )
+        self.summary: dict[str, float] = {}
         self.num_reinstatements = (
             aggregate_limit / limit - 1 if aggregate_limit is not None else None
         )
         self.reinstatement_premium_cost = (
-            xp.array(reinstatement_cost)
-            if reinstatement_cost is not None
-            else None
+            xp.array(reinstatement_cost) if reinstatement_cost is not None else None
         )
-    
-    
+
     def apply(self, claims: FreqSevSims) -> ContractResults:
         """
         Apply the XoL contract to a set of claims.
@@ -78,7 +88,7 @@ class XoL:
         Calculation of the recoveries from the excess of loss contract:
 
         Firstly, the effect of any franchise or reverse franchise is calculated on the individual losses.
-         
+
         losses post franchise = loss if loss >= franchise and loss<= reverse franchise
 
         Next the individual losses to the layer are calculated:
@@ -96,17 +106,19 @@ class XoL:
         The number of reinstatements used is calculated as the minimum of the aggregate recoveries divided by the limit and the number of reinstatements available (which is the aggregate limit divided by the occurrence limit, less one).
         """
         # apply franchise
-        if self.franchise!=0 or self.reverse_franchise!=np.inf:
-            franchise = self.franchise if self.franchise is not None else 0
-            reverse_franchise = self.reverse_franchise if self.reverse_franchise is not None else np.inf
-            claims = np.where((claims>=franchise) & (claims<reverse_franchise),claims,0)
-            
-        individual_recoveries_pre_aggregate = np.minimum(
+        if self.franchise != 0 or self.reverse_franchise != np.inf:
+            claims = np.where(
+                (claims >= self.franchise) & (claims < self.reverse_franchise),
+                claims,
+                0,
+            )
+
+        individual_recoveries_pre_aggregate: FreqSevSims = np.minimum(
             np.maximum(claims - self.excess, 0), self.limit
         )
-        if self.aggregate_limit==np.inf and self.aggregate_deductible==0:
-            self.calc_summary(claims,individual_recoveries_pre_aggregate.aggregate())
-            return ContractResults(individual_recoveries_pre_aggregate,None)
+        if self.aggregate_limit == np.inf and self.aggregate_deductible == 0:
+            self.calc_summary(claims, individual_recoveries_pre_aggregate.aggregate())
+            return ContractResults(individual_recoveries_pre_aggregate)
         aggregate_limit = (
             self.aggregate_limit if self.aggregate_limit is not None else np.inf
         )
@@ -114,40 +126,50 @@ class XoL:
             self.aggregate_deductible if self.aggregate_deductible is not None else 0
         )
         aggregate_recoveries_pre_agg = individual_recoveries_pre_aggregate.aggregate()
-        
+
         aggregate_recoveries = np.minimum(
             np.maximum(aggregate_recoveries_pre_agg - aggregate_deductible, 0),
             aggregate_limit,
         )
-        ratio = np.where(aggregate_recoveries_pre_agg==0,1,np.divide(aggregate_recoveries,aggregate_recoveries_pre_agg))
-        recoveries = individual_recoveries_pre_aggregate*ratio
-        results = ContractResults(recoveries, None)
-        if self.reinstatement_premium_cost is not None:
+        non_zero_recoveries = aggregate_recoveries != 0
+        ratio = xp.ones(aggregate_recoveries_pre_agg.shape)
+        xp.putmask(
+            ratio,
+            non_zero_recoveries,
+            np.divide(
+                aggregate_recoveries[non_zero_recoveries],
+                aggregate_recoveries_pre_agg[non_zero_recoveries],
+            ),
+        )
+
+        recoveries = individual_recoveries_pre_aggregate * ratio
+        results = ContractResults(recoveries)
+        if (
+            self.reinstatement_premium_cost is not None
+            and self.num_reinstatements is not None
+        ):
             cumulative_reinstatement_cost = np.cumsum(self.reinstatement_premium_cost)
             limits_used = aggregate_recoveries / self.limit
-            reinstatements_used = np.minimum(
-                limits_used, self.num_reinstatements
-            )
-            reinstatements_used_full = np.floor(
-                reinstatements_used
-            ).astype(int)
+            reinstatements_used = np.minimum(limits_used, self.num_reinstatements)
+            reinstatements_used_full = np.floor(reinstatements_used).astype(int)
             reinstatements_used_fraction = (
                 reinstatements_used - reinstatements_used_full
             )
-            reinstatement_number = np.maximum(reinstatements_used_full-1,0)
+            reinstatement_number = np.maximum(reinstatements_used_full - 1, 0)
             reinstatement_premium_proportion = self.reinstatement_premium_cost[
-                    reinstatement_number
-                ]* reinstatements_used_fraction + np.where(reinstatements_used_full>0,
-                cumulative_reinstatement_cost[
-                    reinstatement_number
-                ],0)
+                reinstatement_number
+            ] * reinstatements_used_fraction + np.where(
+                reinstatements_used_full > 0,
+                cumulative_reinstatement_cost[reinstatement_number],
+                0,
+            )
 
             reinstatement_premium = reinstatement_premium_proportion * self.premium
             results.reinstatement_premium = reinstatement_premium
-        self.calc_summary(claims,aggregate_recoveries)
+        self.calc_summary(claims, aggregate_recoveries)
         return results
-    
-    def calc_summary(self, gross_losses:FreqSevSims,aggregate_recoveries: np.ndarray):
+
+    def calc_summary(self, gross_losses: FreqSevSims, aggregate_recoveries: np.ndarray):
         """
         Calculate a summary of the losses to the layer. The results are stored in the summary attribute of the layer.
 
@@ -164,11 +186,13 @@ class XoL:
         mean = aggregate_recoveries.mean()
         sd = aggregate_recoveries.std()
         count = np.sum((aggregate_recoveries > 0).astype(np.float64))
-        vertical_exhaust = np.maximum(gross_losses - self.limit+self.excess,0)
+        vertical_exhaust = np.maximum(gross_losses - self.limit + self.excess, 0)
         aggregate_vertical_exhaust = vertical_exhaust.aggregate()
 
-        v_count = np.sum(aggregate_vertical_exhaust>0)
-        h_count = np.sum((aggregate_recoveries >= self.aggregate_limit).astype(np.float64))
+        v_count = np.sum(aggregate_vertical_exhaust > 0)
+        h_count = np.sum(
+            (aggregate_recoveries >= self.aggregate_limit).astype(np.float64)
+        )
         self.summary = {
             "mean": mean,
             "std": sd,
@@ -183,7 +207,7 @@ class XoL:
 
     def print_summary(self):
         """Print a summary of the losses to the layer
-        
+
         >>> layer.print_summary()
         Layer Name : Layer 1
         Mean Recoveries:  100000.0
@@ -191,9 +215,8 @@ class XoL:
         Probability of Attachment:  0.0
         Probability of Vertical Exhaustion:  0.0
         Probability of Horizontal Exhaustion:  0.0
-    
+
         """
-        
 
         print("Layer Name : {}".format(self.name))
         print("Mean Recoveries: ", self.summary["mean"])
@@ -207,59 +230,60 @@ class XoL:
             "Probability of Horizontal Exhaustion: ",
             self.summary["prob_horizonal_exhaust"],
         ),
-        print("") 
+        print("")
 
 
 class XoLTower:
     """Represents a tower of excess of loss reinsurance contracts."""
-    def __init__(
-            self,
-            limit: list[float],
-            excess: list[float],
-            premium: list[float],
-            name: list[str] | None = None,
-            reinstatement_cost: list[list[float]] | None = None,
-            aggregate_deductible: list[float] = None,
-            aggregate_limit: list[float] = None,
-            franchise: list[float] = None,
-            reverse_franchise: list[float] = None,
-        ):
-            """
-            Create an XoL Tower.
 
-            Args:
-                limit (list[float]): A list of limits for each layer.
-                excess (list[float]): A list of excesses for each layer.
-                premium (list[float]): The premium for each layer.
-                name (list[str], optional): A list of names for each layer. Defaults to None.
-                reinstatement_cost (list[list[float]] | None, optional): A list of reinstatement costs for each reinstatement for each layer. Defaults to None.
-                aggregate_deductible (list[float], optional): The aggregate deductible. Defaults to None.
-                aggregate_limit (list[float], optional): The aggregate limit. Defaults to None.
-                franchise (list[float], optional): The franchise amount. Defaults to None.
-                reverse_franchise (list[float], optional): The reverse franchise amount. Defaults to None.
-            """
-        
-            self.limit = limit
-            self.excess = excess
-            self.aggregate_limit = aggregate_limit
-            self.aggregate_deductible = aggregate_deductible
-            self.franchise = franchise
-            self.reverse_franchise = reverse_franchise
-            self.n_layers = len(limit)
-            self.layers = [
-                XoL(
-                    "Layer {}".format(i + 1) if name is None else name[i],
-                    limit[i],
-                    excess[i],
-                    premium[i],
-                    reinstatement_cost[i],
-                    aggregate_limit[i] if aggregate_limit is not None else None,
-                    aggregate_deductible[i] if aggregate_deductible is not None else None,
-                    franchise[i] if franchise is not None else None,
-                    reverse_franchise[i] if reverse_franchise is not None else None,
-                )
-                for i in range(self.n_layers)
-            ]
+    def __init__(
+        self,
+        limit: list[float],
+        excess: list[float],
+        premium: list[float],
+        name: list[str] | None = None,
+        reinstatement_cost: list[list[float] | None] | None = None,
+        aggregate_deductible: list[float | None] | None = None,
+        aggregate_limit: list[float | None] | None = None,
+        franchise: list[float | None] | None = None,
+        reverse_franchise: list[float | None] | None = None,
+    ):
+        """
+        Create an XoL Tower.
+
+        Args:
+            limit (list[float]): A list of limits for each layer.
+            excess (list[float]): A list of excesses for each layer.
+            premium (list[float]): The premium for each layer.
+            name (list[str], optional): A list of names for each layer. Defaults to None.
+            reinstatement_cost (list[list[float]] | None, optional): A list of reinstatement costs for each reinstatement for each layer. Defaults to None.
+            aggregate_deductible (list[float], optional): The aggregate deductible. Defaults to None.
+            aggregate_limit (list[float], optional): The aggregate limit. Defaults to None.
+            franchise (list[float], optional): The franchise amount. Defaults to None.
+            reverse_franchise (list[float], optional): The reverse franchise amount. Defaults to None.
+        """
+
+        self.limit = limit
+        self.excess = excess
+        self.aggregate_limit = aggregate_limit
+        self.aggregate_deductible = aggregate_deductible
+        self.franchise = franchise
+        self.reverse_franchise = reverse_franchise
+        self.n_layers = len(limit)
+        self.layers = [
+            XoL(
+                "Layer {}".format(i + 1) if name is None else name[i],
+                limit[i],
+                excess[i],
+                premium[i],
+                reinstatement_cost[i] if reinstatement_cost is not None else None,
+                aggregate_limit[i] if aggregate_limit is not None else None,
+                aggregate_deductible[i] if aggregate_deductible is not None else None,
+                franchise[i] if franchise is not None else None,
+                reverse_franchise[i] if reverse_franchise is not None else None,
+            )
+            for i in range(self.n_layers)
+        ]
 
     def apply(self, claims: FreqSevSims) -> ContractResults:
         """
@@ -276,7 +300,11 @@ class XoLTower:
         for layer in self.layers:
             layer_results = layer.apply(claims)
             recoveries += layer_results.recoveries
-            reinstatement_premium += layer_results.reinstatement_premium if layer_results.reinstatement_premium is not None else 0
+            reinstatement_premium += (
+                layer_results.reinstatement_premium
+                if layer_results.reinstatement_premium is not None
+                else 0
+            )
 
         return ContractResults(recoveries, reinstatement_premium)
 
@@ -284,4 +312,3 @@ class XoLTower:
         """Print a summary of the program losses"""
         for layer in self.layers:
             layer.print_summary()
-        

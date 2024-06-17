@@ -1,5 +1,8 @@
-"""The Distributions module contains a number of classes for simulating from statistical distributions. The distributions mainly follow the convention of Klugman"""
+"""The Distributions module contains a number of classes for simulating from statistical distributions.
+The distributions mainly follow the convention of Klugman"""
+
 from .config import config, xp as np, _use_gpu
+
 if _use_gpu:
     import cupyx.scipy.special as special
 else:
@@ -7,23 +10,23 @@ else:
 from abc import ABC, abstractmethod
 
 
-
 class Distribution(ABC):
     """An abstract base class for statistical distributions"""
+
     def __init__(self):
         pass
-    
+
     @abstractmethod
     def cdf(self, x):
         pass
-    
+
     @abstractmethod
     def invcdf(self, u):
         pass
 
     def generate(
-            self, n_sims=None, rng: np.random.Generator = config.rng
-        ) -> np.ndarray:
+        self, n_sims=None, rng: np.random.Generator = config.rng
+    ) -> np.ndarray:
         """
         Generate random samples from the distribution.
 
@@ -39,8 +42,10 @@ class Distribution(ABC):
 
         return self.invcdf(rng.uniform(size=n_sims))
 
+
 class DiscreteDistribution(Distribution):
     """An abstract base class for discrete distributions"""
+
     def __init__(self):
         pass
 
@@ -49,6 +54,7 @@ class DiscreteDistribution(Distribution):
 
     def invcdf(self, u):
         pass
+
 
 class Poisson(DiscreteDistribution):
     """Poisson Distribution
@@ -68,7 +74,7 @@ class Poisson(DiscreteDistribution):
     def __init__(self, mean):
         self.mean = mean
 
-    def cdf(self, x: np.ndarray | float)-> np.ndarray | float:
+    def cdf(self, x: np.ndarray | float) -> np.ndarray | float:
         """
         Calculates the cumulative distribution function (CDF) of the Poisson distribution.
 
@@ -79,9 +85,8 @@ class Poisson(DiscreteDistribution):
         The probability that a random variable from the Poisson distribution is less than or equal to x.
         """
         return special.pdtr(x, self.mean)
-    
 
-    def invcdf(self, u: np.ndarray | float ) -> np.ndarray | float:
+    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
         """
         Calculates the inverse cumulative distribution function of the Poisson distribution.
 
@@ -92,13 +97,13 @@ class Poisson(DiscreteDistribution):
             float or ndarray: The value(s) corresponding to the given probability value(s) in the Poisson distribution.
         """
         return special.pdtri(u, self.mean)
-    
 
     def generate(self, n_sims=None, rng: np.random.Generator = config.rng):
         """Generates random samples from the Poisson distribution"""
         if n_sims is None:
             n_sims = config.n_sims
         return rng.poisson(self.mean, n_sims)
+
 
 class NegBinomial(DiscreteDistribution):
     """NegBinomial Distribution
@@ -142,7 +147,7 @@ class NegBinomial(DiscreteDistribution):
             float: The cumulative distribution function value at the given value.
         """
         return special.nbdtr(x, self.n, self.p)
-    
+
     def invcdf(self, u) -> np.ndarray | float:
         """
         Calculates the inverse cumulative distribution function of the Negative Binomial distribution.
@@ -170,6 +175,7 @@ class NegBinomial(DiscreteDistribution):
         if n_sims is None:
             n_sims = config.n_sims
         return rng.negative_binomial(self.n, self.p, n_sims)
+
 
 class GPD(Distribution):
     r"""The Generalised Pareto distribution is defined as through the cumulative distribution function:
@@ -212,7 +218,7 @@ class GPD(Distribution):
         sigma = self.scale
         mu = self.loc
         return ((1 - u) ** (-xi) - 1) * sigma / xi + mu
-    
+
 
 class Burr(Distribution):
     r"""The Burr Distribution is defined through the cumulative distribution function:
@@ -251,9 +257,7 @@ class Burr(Distribution):
         Returns:
             u: The CDF value at the given x.
         """
-        return 1 - (1 + ((x - self.loc) / self.scale) ** self.power) ** (
-            -self.shape
-        )
+        return 1 - (1 + ((x - self.loc) / self.scale) ** self.power) ** (-self.shape)
 
     def invcdf(self, u) -> np.ndarray | float:
         """
@@ -266,23 +270,65 @@ class Burr(Distribution):
             float or np.ndarray: The corresponding quantile(s) for the given probability value(s).
         """
         return (
-            self.scale
-            * (((1 / (1 - u)) ** (1 / self.shape) - 1) ** (1 / self.power))
+            self.scale * (((1 / (1 - u)) ** (1 / self.shape) - 1) ** (1 / self.power))
             + self.loc
         )
 
-def _inverse_burr_invcdf(u,scale,shape,power,loc):
-    if u == 0:
-            return loc
-    return (
-            scale
-            * ((u ** (-1 / shape) - 1) ** (-1 / power))
-            + loc
-        )
+
+class Beta(Distribution):
+    r"""Beta distribution
+    
+    The Beta Distribution is defined through the cumulative distribution function:
+    
+    .. math::
+
+        F(x) =    \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} \int_0^x u^{\alpha-1}(1-u)^{\beta-1} \\
+        
+    where :math:`u = \frac{x-\mu}{\sigma}`,:math:`\alpha` and :math:`\beta` are the shape parameters, :math:`\mu` is the location parameter, :math:`\sigma` is the scale parameter.
+
+    Args:
+            alpha (float): The alpha parameter.
+            beta (float): The beta parameter.
+            scale (float): The scale parameter.
+            loc (float): The location parameter.
+    
+    """
+
+    def __init__(self, alpha, beta, scale=1, loc=0):
+
+        self.alpha = alpha
+        self.beta = beta
+        self.scale = scale
+        self.loc = loc
+
+    def cdf(self, x) -> np.ndarray | float:
+        """
+        Calculates the cumulative distribution function (CDF) of the Beta distribution.
+
+        Parameters:
+            x: The value at which to evaluate the CDF.
+
+        Returns:
+            u: The CDF value at the given x.
+        """
+        return special.betainc(self.alpha, self.beta, (x - self.loc) / self.scale)
+
+    def invcdf(self, u) -> np.ndarray | float:
+        """
+        Calculates the inverse cumulative distribution function (CDF) of the Beta distribution.
+
+        Parameters:
+            u (float or np.ndarray): The probability value(s) for which to calculate the inverse CDF.
+
+        Returns:
+            float or np.ndarray: The corresponding quantile(s) for the given probability value(s).
+        """
+        return special.betaincinv(self.alpha, self.beta, u) * self.scale + self.loc
+
 
 class InverseBurr(Distribution):
     r"""Inverse Burr Distribution
-    
+
     The Inverse Burr Distribution has cumulative distribution function:
 
     .. math::
@@ -320,7 +366,7 @@ class InverseBurr(Distribution):
 
         y = ((x - self.loc) / self.scale) ** self.power
 
-        return (y/(1+y))**self.shape
+        return (y / (1 + y)) ** self.shape
 
     def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
         """
@@ -334,9 +380,14 @@ class InverseBurr(Distribution):
         """
         return (
             self.scale
-            * (np.float_power((np.float_power(u , (-1 / self.shape)) - 1) , (-1 / self.power)))
+            * (
+                np.float_power(
+                    (np.float_power(u, (-1 / self.shape)) - 1), (-1 / self.power)
+                )
+            )
             + self.loc
         )
+
 
 class LogLogistic(Distribution):
     r"""The Log Logistic Distribution is defined through the cumulative distribution function:
@@ -378,16 +429,17 @@ class LogLogistic(Distribution):
         return y / (1 + y)
 
     def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
-            """
-            Calculates the inverse cdf of the Log Logistic distribution.
+        """
+        Calculates the inverse cdf of the Log Logistic distribution.
 
-            Parameters:
-                u (float or np.ndarray): The probability value(s) for which to calculate the inverse cdf.
+        Parameters:
+            u (float or np.ndarray): The probability value(s) for which to calculate the inverse cdf.
 
-            Returns:
-                float or np.ndarray: The corresponding inverse cdf value(s).
-            """
-            return self.scale * ((u / (1 - u)) ** (1 / self.shape)) + self.loc
+        Returns:
+            float or np.ndarray: The corresponding inverse cdf value(s).
+        """
+        return self.scale * ((u / (1 - u)) ** (1 / self.shape)) + self.loc
+
 
 class Normal(Distribution):
     """Normal distribution"""
@@ -417,14 +469,144 @@ class Normal(Distribution):
 
     def invcdf(self, u) -> np.ndarray | float:
         """Calculates the inverse cdf of the Normal Distribution
-        
+
         Parameters:
         u (float or ndarray): The probability value(s) for which to calculate the inverse cdf.
-        
+
         Returns:
         float or ndarray: The corresponding value(s) from the inverse cdf of the Normal Distribution.
         """
         return special.ndtri(u) * self.sigma + self.mu
+
+
+class LogNormal(Distribution):
+    """Log Normal distribution
+
+    Parameters:
+        - mu (float): The mean of the logged distribution.
+        - sigma (float): The standard deviation of the logged distribution.
+
+    """
+
+    def __init__(self, mu, sigma):
+        self.mu = mu
+        self.sigma = sigma
+
+    def cdf(self, x: np.ndarray | float) -> np.ndarray | float:
+        """
+        Calculates the cumulative distribution function (CDF) of the Log-Normal Distribution.
+
+        Parameters:
+        - x (float or ndarray): The value at which to evaluate the CDF.
+
+        Returns:
+        float or ndarray: The probability that a random variable from the Log-Normal Distribution is less than or equal to x.
+        """
+        return special.ndtr((np.log(x) - self.mu) / self.sigma)
+
+    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+        """Calculates the inverse cdf of the Log-Normal Distribution
+
+        Parameters:
+        u (float or ndarray): The probability value(s) for which to calculate the inverse cdf.
+
+        Returns:
+        float or ndarray: The corresponding value(s) from the inverse cdf of the Log-Normal Distribution.
+        """
+        return np.exp(special.ndtri(u) * self.sigma + self.mu)
+
+
+class Gamma(Distribution):
+    r"""Gamma distribution.
+
+    The Gamma distribution has the following cumulative distribution function (CDF):
+
+    .. math::
+
+            F(x) = \frac{1}{\Gamma(\alpha)} \gamma(k, \frac{(\alpha-\mu)}{\theta}), x>\mu
+        where :math:`\alpha` is the shape parameter, :math:`\theta` is the scale parameter, :math:`\mu` is the location parameter and :math:`\gamma(\alpha,z )` is the lower incomplete gamma function.
+
+    Parameters:
+        - alpha: The shape parameter :math:`\alpha`.
+        - scale: The scale parameter :math:`\theta`.
+        - loc: The location parameter :math:`\mu`.
+
+    """
+
+    def __init__(self, alpha, theta, loc=0):
+        self.alpha = alpha
+        self.theta = theta
+        self.loc = loc
+
+    def cdf(self, x: np.ndarray | float) -> np.ndarray | float:
+        """
+        Calculates the cumulative distribution function (CDF) of the Gamma Distribution.
+
+        Parameters:
+        - x (float or ndarray): The value at which to evaluate the CDF.
+
+        Returns:
+        float or ndarray: The probability that a random variable from the Gamma Distribution is less than or equal to x.
+        """
+        return special.gammainc(self.alpha, (x - self.loc) / self.theta)
+
+    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+        """Calculates the inverse cdf of the Gamma Distribution
+
+        Parameters:
+        u (float or ndarray): The probability value(s) for which to calculate the inverse cdf.
+
+        Returns:
+        float or ndarray: The corresponding value(s) from the inverse cdf of the Gamma Distribution.
+        """
+        return special.gammaincinv(self.alpha, u) * self.theta + self.loc
+
+
+class InverseGamma(Distribution):
+    r"""Inverse Gamma distribution.
+
+    The Inverse Gamma distribution has the following cumulative distribution function (CDF):
+
+    .. math::
+
+            F(x) = 1-\frac{1}{\Gamma(\alpha)} \gamma(\alpha, \frac{\theta}{(x-\mu)}), x>\mu
+        where :math:`\alpha` is the shape parameter, :math:`\theta` is the scale parameter, :math:`\mu` is the location parameter and :math:`\gamma(\alpha,z )` is the lower incomplete gamma function.
+
+    Parameters:
+        - alpha: The shape parameter :math:`\alpha`.
+        - scale: The scale parameter :math:`\theta`.
+        - loc: The location parameter :math:`\mu`.
+
+    """
+
+    def __init__(self, alpha, theta, loc=0):
+        self.alpha = alpha
+        self.theta = theta
+        self.loc = loc
+
+    def cdf(self, x: np.ndarray | float) -> np.ndarray | float:
+        """
+        Calculates the cumulative distribution function (CDF) of the Inverse Gamma Distribution.
+
+        Parameters:
+        - x (float or ndarray): The value at which to evaluate the CDF.
+
+        Returns:
+        float or ndarray: The probability that a random variable from the Inverse Gamma Distribution is less than or equal to x.
+        """
+        return special.gammaincc(self.alpha, np.divide(self.theta, (x - self.loc)))
+
+    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+        """Calculates the inverse cdf of the Inverse Gamma Distribution
+
+        Parameters:
+        u (float or ndarray): The probability value(s) for which to calculate the inverse cdf.
+
+        Returns:
+        float or ndarray: The corresponding value(s) from the inverse cdf of the Inverse Gamma Distribution.
+        """
+        return np.divide(self.theta, special.gammainccinv(self.alpha, u)) + self.loc
+
 
 class Pareto(Distribution):
     r"""Pareto Distribution
@@ -487,13 +669,13 @@ class Paralogistic(Distribution):
         F(x) = 1 - \left[1+\left(\frac{x-\mu}{\sigma}\right)^\alpha\right]^{-\alpha}, x>\mu
 
     where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location parameter :math:`\mu` is any real number.
-        
+
     Args:
         shape (float): The shape parameter of the ParaLogistic distribution.
         scale (float): The scale parameter of the ParaLogistic distribution.
     """
 
-    def __init__(self, shape, scale,loc = 0):
+    def __init__(self, shape, scale, loc=0):
         self.shape = shape
         self.scale = scale
         self.loc = loc
@@ -507,7 +689,7 @@ class Paralogistic(Distribution):
         Returns:
             float: The CDF value at the given x.
         """
-        y = 1/(1+((x-self.loc)/self.scale)**(self.shape))
+        y = 1 / (1 + ((x - self.loc) / self.scale) ** (self.shape))
         return 1 - (y) ** self.shape
 
     def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
@@ -519,8 +701,10 @@ class Paralogistic(Distribution):
         Returns:
             np.ndarray or float: The inverse CDF value(s) at the given u.
         """
-        return  self.loc + self.scale * ((1 - u) ** (-1 / self.shape) - 1) ** (1 / self.shape)
-    
+        return self.loc + self.scale * ((1 - u) ** (-1 / self.shape) - 1) ** (
+            1 / self.shape
+        )
+
 
 class InverseParalogistic(Distribution):
     r"""Inverse ParaLogistic Distribution
@@ -533,13 +717,13 @@ class InverseParalogistic(Distribution):
         F(x) = \left[\frac{\left(\frac{x-\mu}{\sigma}\right)^\alpha}{\left(1+\frac{x-\mu}{\sigma}\right)^\alpha}\right]^{-\alpha}, x>\mu
 
     where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location parameter :math:`\mu` is any real number.
-        
+
     Args:
         shape (float): The shape parameter of the Inverse Paralogistic distribution.
         scale (float): The scale parameter of the Inverse Paralogistic distribution.
     """
 
-    def __init__(self, shape, scale,loc = 0):
+    def __init__(self, shape, scale, loc=0):
         self.shape = shape
         self.scale = scale
         self.loc = loc
@@ -553,8 +737,8 @@ class InverseParalogistic(Distribution):
         Returns:
             float: The CDF value at the given x.
         """
-        y = ((x-self.loc)/self.scale)**(self.shape)
-        return  (y/(1+y)) ** self.shape
+        y = ((x - self.loc) / self.scale) ** (self.shape)
+        return (y / (1 + y)) ** self.shape
 
     def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Inverse ParaLogistic distribution.
@@ -566,8 +750,9 @@ class InverseParalogistic(Distribution):
             np.ndarray or float: The inverse CDF value(s) at the given u.
         """
         y = (u) ** (1 / self.shape)
-        return  self.loc + self.scale * (y/(1-y)) ** (1 / self.shape)
-    
+        return self.loc + self.scale * (y / (1 - y)) ** (1 / self.shape)
+
+
 class Weibull(Distribution):
     r"""Weibull Distribution
 
@@ -579,14 +764,14 @@ class Weibull(Distribution):
         F(x) = 1-e^{-((x-\mu)/\\sigma)^\alpha}, x>\mu
 
     where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location parameter :math:`\mu` is any real number.
-        
+
     Args:
         shape (float): The shape parameter of the Weibull distribution.
         scale (float): The scale parameter of the Weibull distribution.
         loc (float): The location parameter of the Weibull distribution.
     """
 
-    def __init__(self, shape, scale,loc = 0):
+    def __init__(self, shape, scale, loc=0):
         self.shape = shape
         self.scale = scale
         self.loc = loc
@@ -600,8 +785,8 @@ class Weibull(Distribution):
         Returns:
             float: The CDF value at the given x.
         """
-        y = ((x-self.loc)/self.scale)**(self.shape)
-        return  -np.expm1(-y)
+        y = ((x - self.loc) / self.scale) ** (self.shape)
+        return -np.expm1(-y)
 
     def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Weibull distribution.
@@ -612,8 +797,9 @@ class Weibull(Distribution):
         Returns:
             np.ndarray or float: The inverse CDF value(s) at the given u.
         """
-        return  self.loc + self.scale * (-np.log(1-u))**(1/self.shape)
-    
+        return self.loc + self.scale * (-np.log(1 - u)) ** (1 / self.shape)
+
+
 class InverseWeibull(Distribution):
     r"""Inverse Weibull Distribution
 
@@ -625,14 +811,14 @@ class InverseWeibull(Distribution):
         F(x) = e^{-((x-\mu)/\\sigma)^{-\alpha}}, x>\mu
 
     where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location parameter :math:`\mu` is any real number.
-        
+
     Args:
         shape (float): The shape parameter of the Inverse Weibull distribution.
         scale (float): The scale parameter of the Inverse Weibull distribution.
         loc (float): The location parameter of the Inverse Weibull distribution.
     """
 
-    def __init__(self, shape, scale,loc = 0):
+    def __init__(self, shape, scale, loc=0):
         self.shape = shape
         self.scale = scale
         self.loc = loc
@@ -646,8 +832,8 @@ class InverseWeibull(Distribution):
         Returns:
             float: The CDF value at the given x.
         """
-        y = np.float_power((x-self.loc)/self.scale,-self.shape)
-        return  np.exp(-y)
+        y = np.float_power((x - self.loc) / self.scale, -self.shape)
+        return np.exp(-y)
 
     def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Weibull distribution.
@@ -658,8 +844,9 @@ class InverseWeibull(Distribution):
         Returns:
             np.ndarray or float: The inverse CDF value(s) at the given u.
         """
-        return  self.loc + self.scale * (-1/(np.log(u)))**(1/self.shape)
-    
+        return self.loc + self.scale * (-1 / (np.log(u))) ** (1 / self.shape)
+
+
 class Exponential(Distribution):
     r"""Exponential Distribution
 
@@ -671,13 +858,13 @@ class Exponential(Distribution):
         F(x) = 1-e^{-((x-\mu)/\\sigma)}, x>\mu
 
     where the scale parameter :math:`\sigma` is positive, and the location parameter :math:`\mu` is any real number.
-        
+
     Args:
         scale (float): The scale parameter of the Exponential distribution.
         loc (float): The location parameter of the Exponential distribution.
     """
 
-    def __init__(self, scale,loc = 0):
+    def __init__(self, scale, loc=0):
         self.scale = scale
         self.loc = loc
 
@@ -690,8 +877,8 @@ class Exponential(Distribution):
         Returns:
             float: The CDF value at the given x.
         """
-        y = ((x-self.loc)/self.scale)
-        return  -np.expm1(-y)
+        y = (x - self.loc) / self.scale
+        return -np.expm1(-y)
 
     def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Exponential distribution.
@@ -702,8 +889,8 @@ class Exponential(Distribution):
         Returns:
             np.ndarray or float: The inverse CDF value(s) at the given u.
         """
-        return  self.loc + self.scale * (-np.log(1-u))
-    
+        return self.loc + self.scale * (-np.log(1 - u))
+
 
 class InverseExponential(Distribution):
     r"""Inverse Exponential Distribution
@@ -716,13 +903,13 @@ class InverseExponential(Distribution):
         F(x) = e^{-(\sigma/(x-\mu))}, x>\mu
 
     where the scale parameter :math:`\sigma` is positive, and the location parameter :math:`\mu` is any real number.
-        
+
     Args:
         scale (float): The scale parameter of the Exponential distribution.
         loc (float): The location parameter of the Exponential distribution.
     """
 
-    def __init__(self, scale,loc = 0):
+    def __init__(self, scale, loc=0):
         self.scale = scale
         self.loc = loc
 
@@ -735,8 +922,8 @@ class InverseExponential(Distribution):
         Returns:
             float: The CDF value at the given x.
         """
-        y = self.scale*np.float_power((x-self.loc),-1)
-        return  np.exp(-y)
+        y = self.scale * np.float_power((x - self.loc), -1)
+        return np.exp(-y)
 
     def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Inverse Exponential distribution.
@@ -747,4 +934,4 @@ class InverseExponential(Distribution):
         Returns:
             np.ndarray or float: The inverse CDF value(s) at the given u.
         """
-        return  self.loc - self.scale * 1/(np.log(u))
+        return self.loc - self.scale * 1 / (np.log(u))
