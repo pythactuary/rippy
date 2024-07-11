@@ -175,8 +175,8 @@ class FreqSevSims:
         result = getattr(ufunc, method)(*inputs, **kwargs)
         return FreqSevSims(self.sim_index, result, self.n_sims)
 
-    def __array_function__(self, func: np.ufunc, types, args, kwargs):
-        if func not in (numpy.where, numpy.maximum, numpy.sum):
+    def __array_function__(self, func: callable, types, args, kwargs):
+        if func not in (numpy.where, numpy.sum):
             raise NotImplementedError
         args = tuple(x.values if isinstance(x, FreqSevSims) else x for x in args)
         result = func(*args, **kwargs)
