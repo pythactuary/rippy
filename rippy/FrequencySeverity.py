@@ -206,7 +206,7 @@ class FreqSevSims:
             return FreqSevSims(self.sim_index, self.values - x, self.n_sims)
         elif isinstance(x, np.ndarray):
             return FreqSevSims(
-                self.sim_index, self.values + x[self.sim_index], self.n_sims
+                self.sim_index, self.values - x[self.sim_index], self.n_sims
             )
         else:
             raise NotImplementedError
