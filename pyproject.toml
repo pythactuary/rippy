@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rippy"
+version = "0.0.8"
+authors = [
+  { name="James Norman", email="james.norman@proteusllp.com" },
+]
+description = "Reinsurance Pricing in Python!"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+license = {text = "MIT License"}
+keywords=["reinsurance", "actuarial", "insurance"]
+dependencies = [
+  "numpy",
+  "scipy",
+]
+
+[project.optional-dependencies]
+gpu = ["cupy-cuda11x"]
+
+[project.urls]
+Homepage = "https://github.com/ProteusLLP/rippy"
+Issues = "https://github.com/ProteusLLP/rippy/issues"

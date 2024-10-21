@@ -14,7 +14,7 @@ def test_XoL_no_agg():
     )
     result = layer.apply(claims)
     assert result.recoveries.values.tolist() == [0, 500000, 250000, 0]
-    assert result.reinstatement_premium == None
+    assert result.reinstatement_premium is None
 
 
 def test_XoL_franchise():
@@ -30,7 +30,7 @@ def test_XoL_franchise():
     )
     result = layer.apply(claims)
     assert result.recoveries.values.tolist() == [0, 500000, 400000, 0]
-    assert result.reinstatement_premium == None
+    assert result.reinstatement_premium is None
 
 
 def test_XoL_reinstatements():
