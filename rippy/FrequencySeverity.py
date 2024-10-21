@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Callable
 import numpy
 
 from .config import config, xp as np
@@ -168,15 +168,25 @@ class FreqSevSims:
     def __array_ufunc__(
         self, ufunc: np.ufunc, method: str, *inputs, **kwargs
     ) -> "FreqSevSims":
-        inputs = tuple(x.values if isinstance(x, FreqSevSims) else x for x in inputs)
+        inputs = tuple(
+            (
+                x.values
+                if isinstance(x, FreqSevSims)
+                else (
+                    x[self.sim_index] if isinstance(x, np.ndarray) else x
+                )  # promote an input ndarray to match the simulation index
+            )
+            for x in inputs
+        )
         out = kwargs.get("out", ())
         if out:
             kwargs["out"] = tuple(x.values for x in out)
         result = getattr(ufunc, method)(*inputs, **kwargs)
+
         return FreqSevSims(self.sim_index, result, self.n_sims)
 
-    def __array_function__(self, func: np.ufunc, types, args, kwargs):
-        if func not in (numpy.where, numpy.maximum, numpy.sum):
+    def __array_function__(self, func: Callable, types, args, kwargs):
+        if func not in (numpy.where, numpy.sum):
             raise NotImplementedError
         args = tuple(x.values if isinstance(x, FreqSevSims) else x for x in args)
         result = func(*args, **kwargs)
@@ -184,7 +194,7 @@ class FreqSevSims:
             return result
         return FreqSevSims(self.sim_index, result, self.n_sims)
 
-    def __add__(self, x: Union["FreqSevSims", int, float | np.ndarray]):
+    def __add__(self, x: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(x):
             return FreqSevSims(self.sim_index, self.values + x.values, self.n_sims)
         elif isinstance(x, int) or isinstance(x, float):
@@ -196,28 +206,28 @@ class FreqSevSims:
         else:
             raise NotImplementedError
 
-    def __radd__(self, x: Union["FreqSevSims", int, float | np.ndarray]):
+    def __radd__(self, x: Union["FreqSevSims", int, float, np.ndarray]):
         return self.__add__(x)
 
-    def __sub__(self, x: Union["FreqSevSims", int, float | np.ndarray]):
+    def __sub__(self, x: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(x):
             return FreqSevSims(self.sim_index, self.values - x.values, self.n_sims)
         elif isinstance(x, int) or isinstance(x, float):
             return FreqSevSims(self.sim_index, self.values - x, self.n_sims)
         elif isinstance(x, np.ndarray):
             return FreqSevSims(
-                self.sim_index, self.values + x[self.sim_index], self.n_sims
+                self.sim_index, self.values - x[self.sim_index], self.n_sims
             )
         else:
             raise NotImplementedError
 
-    def __rsub__(self, x: Union["FreqSevSims", int, float | np.ndarray]):
+    def __rsub__(self, x: Union["FreqSevSims", int, float, np.ndarray]):
         return -self.__sub__(x)
 
     def __neg__(self):
         return FreqSevSims(self.sim_index, -self.values, self.n_sims)
 
-    def __mul__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __mul__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(other):
             return FreqSevSims(self.sim_index, self.values * other.values, self.n_sims)
         elif isinstance(other, int) or isinstance(other, float):
@@ -229,7 +239,7 @@ class FreqSevSims:
         else:
             raise NotImplementedError
 
-    def __truediv__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __truediv__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(other):
             return FreqSevSims(self.sim_index, self.values / other.values, self.n_sims)
         elif isinstance(other, int) or isinstance(other, float):
@@ -241,13 +251,41 @@ class FreqSevSims:
         else:
             raise NotImplementedError
 
-    def __rtruediv__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __rtruediv__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         return self.__mul__(1 / other)
 
-    def __rmul__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __rmul__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         return self.__mul__(other)
 
-    def __lt__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __pow__(
+        self, other: Union["FreqSevSims", int, float, np.ndarray]
+    ) -> "FreqSevSims":
+        if self._is_compatible(other):
+            return FreqSevSims(self.sim_index, self.values**other.values, self.n_sims)
+        elif isinstance(other, int) or isinstance(other, float):
+            return FreqSevSims(self.sim_index, self.values**other, self.n_sims)
+        elif isinstance(other, np.ndarray):
+            return FreqSevSims(
+                self.sim_index, self.values ** other[self.sim_index], self.n_sims
+            )
+        else:
+            raise NotImplementedError
+
+    def __rpow__(
+        self, other: Union["FreqSevSims", int, float, np.ndarray]
+    ) -> "FreqSevSims":
+        if self._is_compatible(other):
+            return FreqSevSims(self.sim_index, other.values**self.values, self.n_sims)
+        elif isinstance(other, int) or isinstance(other, float):
+            return FreqSevSims(self.sim_index, other**self.values, self.n_sims)
+        elif isinstance(other, np.ndarray):
+            return FreqSevSims(
+                self.sim_index, other[self.sim_index] ** self.values, self.n_sims
+            )
+        else:
+            raise NotImplementedError
+
+    def __lt__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(other):
             return FreqSevSims(self.sim_index, self.values < other.values, self.n_sims)
         elif isinstance(other, int) or isinstance(other, float):
@@ -259,7 +297,7 @@ class FreqSevSims:
         else:
             raise NotImplementedError
 
-    def __le__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __le__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(other):
             return FreqSevSims(self.sim_index, self.values <= other.values, self.n_sims)
         elif isinstance(other, int) or isinstance(other, float):
@@ -271,7 +309,7 @@ class FreqSevSims:
         else:
             raise NotImplementedError
 
-    def __gt__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __gt__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(other):
             return FreqSevSims(self.sim_index, self.values > other.values, self.n_sims)
         elif isinstance(other, int) or isinstance(other, float):
@@ -283,7 +321,7 @@ class FreqSevSims:
         else:
             raise NotImplementedError
 
-    def __ge__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __ge__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(other):
             return FreqSevSims(self.sim_index, self.values >= other.values, self.n_sims)
         elif isinstance(other, int) or isinstance(other, float):
@@ -295,7 +333,7 @@ class FreqSevSims:
         else:
             raise NotImplementedError
 
-    def __eq__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __eq__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(other):
             return FreqSevSims(self.sim_index, self.values == other.values, self.n_sims)
         elif isinstance(other, int) or isinstance(other, float):
@@ -307,7 +345,7 @@ class FreqSevSims:
         else:
             raise NotImplementedError
 
-    def __and__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __and__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(other):
             return FreqSevSims(
                 self.sim_index, (self.values) & (other.values), self.n_sims
@@ -328,7 +366,7 @@ class FreqSevSims:
     def __rand__(self, other):
         return self.__and__(other)
 
-    def __or__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __or__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         if self._is_compatible(other):
             return FreqSevSims(
                 self.sim_index, (self.values) | (other.values), self.n_sims
@@ -346,12 +384,12 @@ class FreqSevSims:
         else:
             raise NotImplementedError
 
-    def __ror__(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def __ror__(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         return self.__or__(other)
 
     def __repr__(self):
         return "%s(%r)" % (type(self).__name__, self.values)
 
-    def _is_compatible(self, other: Union["FreqSevSims", int, float | np.ndarray]):
+    def _is_compatible(self, other: Union["FreqSevSims", int, float, np.ndarray]):
         """Check if two FreqSevSims objects are compatible for mathematical operations."""
         return isinstance(other, type(self)) and self.sim_index is other.sim_index
