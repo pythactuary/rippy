@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from rippy import FreqSevSims
+from rippy.FrequencySeverity import FreqSevSims
 
 
 def test_aggregate():
@@ -8,7 +8,7 @@ def test_aggregate():
     values = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
     n_sims = 3
     fs = FreqSevSims(sim_index, values, n_sims)
-    assert np.array_equal(fs.aggregate(), np.array([3.0, 12.0, 30.0]))
+    assert np.array_equal(fs.aggregate().values, np.array([3.0, 12.0, 30.0]))
 
 
 def test_occurrence():
@@ -16,7 +16,7 @@ def test_occurrence():
     values = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
     n_sims = 3
     fs = FreqSevSims(sim_index, values, n_sims)
-    assert np.array_equal(fs.occurrence(), np.array([2.0, 5.0, 9.0]))
+    assert np.array_equal(fs.occurrence().values, np.array([2.0, 5.0, 9.0]))
 
 
 def test_copy():

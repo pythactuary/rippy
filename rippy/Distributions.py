@@ -2,6 +2,7 @@
 The distributions mainly follow the convention of Klugman"""
 
 from .config import config, xp as np, _use_gpu
+from .stochastic_scalar import StochasticScalar
 
 if _use_gpu:
     import cupyx.scipy.special as special
@@ -26,7 +27,7 @@ class Distribution(ABC):
 
     def generate(
         self, n_sims=None, rng: np.random.Generator = config.rng
-    ) -> np.ndarray:
+    ) -> StochasticScalar:
         """
         Generate random samples from the distribution.
 
@@ -35,12 +36,12 @@ class Distribution(ABC):
             rng (np.random.Generator, optional): Random number generator. Defaults to the value from the config.
 
         Returns:
-            np.ndarray: Array of random samples generated from the distribution.
+            ProteusStochasticVariable: Array of random samples generated from the distribution.
         """
         if n_sims is None:
             n_sims = config.n_sims
 
-        return self.invcdf(rng.uniform(size=n_sims))
+        return StochasticScalar(self.invcdf(rng.uniform(size=n_sims)))
 
 
 class DiscreteDistribution(Distribution):
@@ -74,7 +75,7 @@ class Poisson(DiscreteDistribution):
     def __init__(self, mean):
         self.mean = mean
 
-    def cdf(self, x: np.ndarray | float) -> np.ndarray | float:
+    def cdf(self, x: StochasticScalar | float) -> StochasticScalar | float:
         """
         Calculates the cumulative distribution function (CDF) of the Poisson distribution.
 
@@ -84,9 +85,9 @@ class Poisson(DiscreteDistribution):
         Returns:
         The probability that a random variable from the Poisson distribution is less than or equal to x.
         """
-        return special.pdtr(x, self.mean)
+        return StochasticScalar(special.pdtr(x, self.mean))
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar:
         """
         Calculates the inverse cumulative distribution function of the Poisson distribution.
 
@@ -96,13 +97,15 @@ class Poisson(DiscreteDistribution):
         Returns:
             float or ndarray: The value(s) corresponding to the given probability value(s) in the Poisson distribution.
         """
-        return special.pdtri(u, self.mean)
+        return StochasticScalar(special.pdtri(u, self.mean))
 
-    def generate(self, n_sims=None, rng: np.random.Generator = config.rng):
+    def generate(
+        self, n_sims=None, rng: np.random.Generator = config.rng
+    ) -> StochasticScalar:
         """Generates random samples from the Poisson distribution"""
         if n_sims is None:
             n_sims = config.n_sims
-        return rng.poisson(self.mean, n_sims)
+        return StochasticScalar(rng.poisson(self.mean, n_sims))
 
 
 class NegBinomial(DiscreteDistribution):
@@ -136,7 +139,7 @@ class NegBinomial(DiscreteDistribution):
         self.n = n
         self.p = p
 
-    def cdf(self, x):
+    def cdf(self, x) -> StochasticScalar:
         """
         Calculates the cumulative distribution function of the Negative Binomial distribution.
 
@@ -144,11 +147,11 @@ class NegBinomial(DiscreteDistribution):
             x (float): The value at which to evaluate the cumulative distribution function.
 
         Returns:
-            float: The cumulative distribution function value at the given value.
+            StochasticScalar: The cumulative distribution function value at the given value.
         """
-        return special.nbdtr(x, self.n, self.p)
+        return StochasticScalar(special.nbdtr(x, self.n, self.p))
 
-    def invcdf(self, u) -> np.ndarray | float:
+    def invcdf(self, u) -> StochasticScalar:
         """
         Calculates the inverse cumulative distribution function of the Negative Binomial distribution.
 
@@ -157,11 +160,13 @@ class NegBinomial(DiscreteDistribution):
 
 
         Returns:
-            np.ndarray or float: The inverse cumulative distribution function values corresponding to the given probability values.
+            StochasticScalar: The inverse cumulative distribution function values corresponding to the given probability values.
         """
-        return special.nbdtri(u, self.n, self.p)
+        return StochasticScalar(special.nbdtri(u, self.n, self.p))
 
-    def generate(self, n_sims=None, rng: np.random.Generator = config.rng):
+    def generate(
+        self, n_sims=None, rng: np.random.Generator = config.rng
+    ) -> StochasticScalar:
         """
         Generates random samples from the Negative Binomial distribution.
 
@@ -174,7 +179,7 @@ class NegBinomial(DiscreteDistribution):
         """
         if n_sims is None:
             n_sims = config.n_sims
-        return rng.negative_binomial(self.n, self.p, n_sims)
+        return StochasticScalar(rng.negative_binomial(self.n, self.p, n_sims))
 
 
 class GPD(Distribution):
@@ -189,13 +194,18 @@ class GPD(Distribution):
 
     """
 
-    def __init__(self, shape, scale, loc):
+    def __init__(
+        self,
+        shape: StochasticScalar | float,
+        scale: StochasticScalar | float,
+        loc: StochasticScalar | float,
+    ):
         """Initializes a new instance of the Generalised Pareto distribution with the specified scale, shape and location"""
         self.shape = shape
         self.scale = scale
         self.loc = loc
 
-    def cdf(self, x):
+    def cdf(self, x: StochasticScalar | float):
         r"""Calculates the cdf of the Generalized Pareto distribution.
 
         The cdf Generalised Pareto distribution is defined as
@@ -206,13 +216,14 @@ class GPD(Distribution):
             F(x) = 1 - e^{-(x-\mu)/\sigma}, \xi=0 \\
 
         """
-        return (
+        result = (
             1 - (1 + self.shape * (x - self.loc) / self.scale) ** (-1 / self.shape)
             if self.shape != 0
             else 1 - np.exp(-(x - self.loc) / self.scale)
         )
+        return result
 
-    def invcdf(self, u) -> np.ndarray | float:
+    def invcdf(self, u) -> StochasticScalar | float:
         """Calculates the inverse cdf of the Generalized Pareto distribution"""
         xi = self.shape
         sigma = self.scale
@@ -232,22 +243,28 @@ class Burr(Distribution):
     
     """
 
-    def __init__(self, power, shape, scale, loc):
+    def __init__(
+        self,
+        power: StochasticScalar | float,
+        shape: StochasticScalar | float,
+        scale: StochasticScalar | float,
+        loc: StochasticScalar | float,
+    ):
         """
         Creates a new Burr distribution.
 
         Args:
-            power (float): The power parameter.
-            shape (float): The shape parameter.
-            scale (float): The scale parameter.
-            loc (float): The location parameter.
+            power (StochasticScalar|float): The power parameter.
+            shape (StochasticScalar|float): The shape parameter.
+            scale (StochasticScalar|float): The scale parameter.
+            loc (StochasticScalar|float): The location parameter.
         """
         self.power = power
         self.shape = shape
         self.scale = scale
         self.loc = loc
 
-    def cdf(self, x) -> np.ndarray | float:
+    def cdf(self, x: StochasticScalar) -> StochasticScalar:
         """
         Calculates the cumulative distribution function (CDF) of the Burr distribution.
 
@@ -257,9 +274,10 @@ class Burr(Distribution):
         Returns:
             u: The CDF value at the given x.
         """
-        return 1 - (1 + ((x - self.loc) / self.scale) ** self.power) ** (-self.shape)
+        result = 1 - (1 + ((x - self.loc) / self.scale) ** self.power) ** (-self.shape)
+        return result
 
-    def invcdf(self, u) -> np.ndarray | float:
+    def invcdf(self, u: StochasticScalar) -> StochasticScalar:
         """
         Calculates the inverse cumulative distribution function (CDF) of the Burr distribution.
 
@@ -353,7 +371,7 @@ class InverseBurr(Distribution):
         self.scale = scale
         self.loc = loc
 
-    def cdf(self, x: np.ndarray | float) -> np.ndarray | float:
+    def cdf(self, x: StochasticScalar | float) -> StochasticScalar | float:
         """
         Calculates the cumulative distribution function (CDF) of the Inverse Burr distribution.
 
@@ -368,7 +386,7 @@ class InverseBurr(Distribution):
 
         return (y / (1 + y)) ** self.shape
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
         """
         Calculates the inverse cumulative distribution function (CDF) of the Inverse Burr distribution.
 
@@ -428,15 +446,15 @@ class LogLogistic(Distribution):
         y = ((x - self.loc) / self.scale) ** (self.shape)
         return y / (1 + y)
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
         """
         Calculates the inverse cdf of the Log Logistic distribution.
 
         Parameters:
-            u (float or np.ndarray): The probability value(s) for which to calculate the inverse cdf.
+            u (float or StochasticScalar): The probability value(s) for which to calculate the inverse cdf.
 
         Returns:
-            float or np.ndarray: The corresponding inverse cdf value(s).
+            float or StochasticScalar: The corresponding inverse cdf value(s).
         """
         return self.scale * ((u / (1 - u)) ** (1 / self.shape)) + self.loc
 
@@ -455,7 +473,7 @@ class Normal(Distribution):
         self.mu = mu
         self.sigma = sigma
 
-    def cdf(self, x):
+    def cdf(self, x: StochasticScalar | float) -> StochasticScalar | float:
         """
         Calculates the cumulative distribution function (CDF) of the Normal Distribution.
 
@@ -467,7 +485,7 @@ class Normal(Distribution):
         """
         return special.ndtr((x - self.mu) / self.sigma)
 
-    def invcdf(self, u) -> np.ndarray | float:
+    def invcdf(self, u) -> StochasticScalar | float:
         """Calculates the inverse cdf of the Normal Distribution
 
         Parameters:
@@ -504,7 +522,7 @@ class LogNormal(Distribution):
         """
         return special.ndtr((np.log(x) - self.mu) / self.sigma)
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
         """Calculates the inverse cdf of the Log-Normal Distribution
 
         Parameters:
@@ -538,7 +556,7 @@ class Gamma(Distribution):
         self.theta = theta
         self.loc = loc
 
-    def cdf(self, x: np.ndarray | float) -> np.ndarray | float:
+    def cdf(self, x: StochasticScalar | float) -> StochasticScalar | float:
         """
         Calculates the cumulative distribution function (CDF) of the Gamma Distribution.
 
@@ -550,7 +568,7 @@ class Gamma(Distribution):
         """
         return special.gammainc(self.alpha, (x - self.loc) / self.theta)
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
         """Calculates the inverse cdf of the Gamma Distribution
 
         Parameters:
@@ -584,19 +602,19 @@ class InverseGamma(Distribution):
         self.theta = theta
         self.loc = loc
 
-    def cdf(self, x: np.ndarray | float) -> np.ndarray | float:
+    def cdf(self, x: StochasticScalar | float) -> StochasticScalar | float:
         """
         Calculates the cumulative distribution function (CDF) of the Inverse Gamma Distribution.
 
         Parameters:
-        - x (float or ndarray): The value at which to evaluate the CDF.
+        - x (float or StochasticScalar): The value at which to evaluate the CDF.
 
         Returns:
-        float or ndarray: The probability that a random variable from the Inverse Gamma Distribution is less than or equal to x.
+        float or StochasticScalar: The probability that a random variable from the Inverse Gamma Distribution is less than or equal to x.
         """
         return special.gammaincc(self.alpha, np.divide(self.theta, (x - self.loc)))
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
         """Calculates the inverse cdf of the Inverse Gamma Distribution
 
         Parameters:
@@ -646,14 +664,14 @@ class Pareto(Distribution):
         """
         return 1 - (x / self.scale) ** (-self.shape)
 
-    def invcdf(self, u) -> np.ndarray | float:
+    def invcdf(self, u) -> StochasticScalar | float:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Pareto distribution.
 
         Args:
             u (float): The probability value at which to evaluate the inverse CDF.
 
         Returns:
-            np.ndarray or float: The inverse CDF value(s) at the given u.
+            StochasticScalar or float: The inverse CDF value(s) at the given u.
         """
         return (1 - u) ** (-1 / self.shape) * self.scale
 
@@ -925,13 +943,13 @@ class InverseExponential(Distribution):
         y = self.scale * np.float_power((x - self.loc), -1)
         return np.exp(-y)
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Inverse Exponential distribution.
 
         Args:
             u (float): The probability value at which to evaluate the inverse CDF.
 
         Returns:
-            np.ndarray or float: The inverse CDF value(s) at the given u.
+           StochasticScalar or float: The inverse CDF value(s) at the given u.
         """
         return self.loc - self.scale * 1 / (np.log(u))

@@ -2,6 +2,7 @@ from .config import xp
 from .FrequencySeverity import FreqSevSims
 from dataclasses import dataclass
 import numpy as np
+from .variables import StochasticScalar
 
 
 @dataclass
@@ -10,7 +11,9 @@ class ContractResults:
     set of claims."""
 
     def __init__(
-        self, recoveries: FreqSevSims, reinstatement_premium: np.ndarray | None = None
+        self,
+        recoveries: FreqSevSims,
+        reinstatement_premium: StochasticScalar | None = None,
     ):
         """
         Create a new contract results object.
@@ -132,13 +135,13 @@ class XoL:
             aggregate_limit,
         )
         non_zero_recoveries = aggregate_recoveries != 0
-        ratio = xp.ones(aggregate_recoveries_pre_agg.shape)
+        ratio = xp.ones(aggregate_recoveries_pre_agg.values.shape)
         xp.putmask(
             ratio,
-            non_zero_recoveries,
+            non_zero_recoveries.values,
             np.divide(
-                aggregate_recoveries[non_zero_recoveries],
-                aggregate_recoveries_pre_agg[non_zero_recoveries],
+                aggregate_recoveries.values[non_zero_recoveries.values],
+                aggregate_recoveries_pre_agg.values[non_zero_recoveries.values],
             ),
         )
 
@@ -151,7 +154,7 @@ class XoL:
             cumulative_reinstatement_cost = np.cumsum(self.reinstatement_premium_cost)
             limits_used = aggregate_recoveries / self.limit
             reinstatements_used = np.minimum(limits_used, self.num_reinstatements)
-            reinstatements_used_full = np.floor(reinstatements_used).astype(int)
+            reinstatements_used_full = np.floor(reinstatements_used).values.astype(int)
             reinstatements_used_fraction = (
                 reinstatements_used - reinstatements_used_full
             )
@@ -169,7 +172,9 @@ class XoL:
         self.calc_summary(claims, aggregate_recoveries)
         return results
 
-    def calc_summary(self, gross_losses: FreqSevSims, aggregate_recoveries: np.ndarray):
+    def calc_summary(
+        self, gross_losses: FreqSevSims, aggregate_recoveries: StochasticScalar
+    ):
         """
         Calculate a summary of the losses to the layer. The results are stored in the summary attribute of the layer.
 
@@ -177,7 +182,7 @@ class XoL:
 
         Args:
             gross_losses (FreqSevSims): Object representing the gross losses.
-            aggregate_recoveries (np.ndarray): Array of aggregate recoveries.
+            aggregate_recoveries (StochasticScalar): Array of aggregate recoveries.
 
         Returns:
             None
@@ -185,21 +190,22 @@ class XoL:
         """
         mean = aggregate_recoveries.mean()
         sd = aggregate_recoveries.std()
-        count = np.sum((aggregate_recoveries > 0).astype(np.float64))
-        vertical_exhaust = np.maximum(gross_losses - self.limit + self.excess, 0)
+        count = (aggregate_recoveries > 0).ssum()
+        vertical_exhaust: FreqSevSims = np.maximum(
+            gross_losses - self.limit + self.excess, 0
+        )
         aggregate_vertical_exhaust = vertical_exhaust.aggregate()
 
-        v_count = np.sum(aggregate_vertical_exhaust > 0)
-        h_count = np.sum(
-            (aggregate_recoveries >= self.aggregate_limit).astype(np.float64)
-        )
+        v_count = (aggregate_vertical_exhaust > 0).ssum()
+        h_count = (aggregate_recoveries >= self.aggregate_limit).ssum()
+
         self.summary = {
             "mean": mean,
             "std": sd,
-            "prob_attach": count / len(aggregate_recoveries),
+            "prob_attach": count / aggregate_recoveries.n_sims,
             "prob_vert_exhaust": v_count / len(gross_losses.values),
             "prob_horizonal_exhaust": (
-                h_count / len(aggregate_recoveries)
+                h_count / aggregate_recoveries.n_sims
                 if self.aggregate_limit is not None
                 else 0
             ),
@@ -296,7 +302,7 @@ class XoLTower:
             ContractResults: The results of applying the XoL Tower to the claims.
         """
         recoveries = claims.copy() * 0
-        reinstatement_premium = xp.zeros(claims.n_sims)
+        reinstatement_premium = StochasticScalar(xp.zeros(claims.n_sims))
         for layer in self.layers:
             layer_results = layer.apply(claims)
             recoveries += layer_results.recoveries
