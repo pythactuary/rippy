@@ -1,6 +1,11 @@
 from rippy.variables import ProteusVariable as pv, StochasticScalar
 
 
+def test_empty():
+    x = pv(dim_name="dim1", values=[])
+    assert x.values == []
+
+
 def test_variable():
     x = pv(dim_name="dim1", values=[1, 2, 3])
     y = x + 1

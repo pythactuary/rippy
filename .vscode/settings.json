@@ -6,5 +6,7 @@
     "python.testing.pytestEnabled": true,
     "flake8.args": [
         "--max-line-length=120"
-    ]
+    ],
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.black-formatter"
 }

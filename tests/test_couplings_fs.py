@@ -21,7 +21,7 @@ def test_fs_reordering():
     # expected_x
     expected_x = FreqSevSims([0, 0, 1, 2, 4], [10, 21, 30, 40, 50], 6)
     # expected_y
-    expected_y = FreqSevSims([0, 2, 2, 4, 5], [52, 22, 32, 12, 42], 6)
+    expected_y = FreqSevSims([4, 2, 2, 5, 0], [12, 22, 32, 42, 52], 6)
 
     assert (expected_x.sim_index == x.sim_index).all()
     assert (expected_x.values == x.values).all()
@@ -47,12 +47,20 @@ def test_fs_reordering2():
     # expected_x
     expected_x = FreqSevSims([0, 0, 1, 2, 4], [10, 21, 30, 40, 50], 6)
     # expected_y
-    expected_y = FreqSevSims([0, 2, 2, 4, 5], [52, 22, 32, 12, 42], 6)
+    expected_y = FreqSevSims([4, 2, 2, 5, 0], [12, 22, 32, 42, 52], 6)
 
     assert (expected_x.sim_index == x.sim_index).all()
     assert (expected_x.values == x.values).all()
     assert (expected_y.sim_index == y.sim_index).all()
     assert (expected_y.values == y.values).all()
+
+    # aggregate x
+    x_agg = x.aggregate()
+    y_agg = y.aggregate()
+    expected_x_agg = StochasticScalar([31, 30, 40, 0, 50, 0])
+    expected_y_agg = StochasticScalar([52, 0, 54, 0, 12, 42])
+    assert (x_agg == expected_x_agg).values.all()
+    assert (y_agg == expected_y_agg).values.all()
 
 
 def test_fs_reordering3():
@@ -67,8 +75,7 @@ def test_fs_reordering3():
     y1 = y * 3
     a = x1.aggregate()
     b = y1.aggregate()
-    copula_samples = GumbelCopula(1.5, 2).generate()
-    apply_copula([a, b], copula_samples)
+    GumbelCopula(1.5, 2).apply([a,b])
     # check the copula has been applied correctly
     calculated_tau = scipy.stats.kendalltau(a.values, b.values).statistic
     assert np.isclose(calculated_tau, 1 - 1 / 1.5, atol=1e-2)
@@ -79,4 +86,3 @@ def test_fs_reordering3():
     assert np.allclose(re_calculated_b.values, b.values, atol=1e-10)
 
 
-test_fs_reordering()

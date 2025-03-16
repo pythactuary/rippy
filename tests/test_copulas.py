@@ -3,6 +3,7 @@ from rippy import copulas
 import pytest
 import numpy as np
 import scipy
+import scipy.special
 
 
 def copula_margins(copula_samples):
@@ -60,5 +61,45 @@ def test_gumbel_copula(theta):
     # calculate the Kendall's tau value
     k = scipy.stats.kendalltau(samples[0].values, samples[1].values).statistic
     assert np.isclose(k, 1 - 1 / theta, atol=1e-2)
+    # test the margins
+    copula_margins(samples)
+
+
+@pytest.mark.parametrize("theta", [1.001, 1.25, 2.2, 3])
+def test_joe_copula(theta):
+    samples = copulas.JoeCopula(theta, 2).generate(100000)
+    # calculate the Kendall's tau value
+    k = scipy.stats.kendalltau(samples[0].values, samples[1].values).statistic
+    assert np.isclose(
+        k,
+        1
+        + 2
+        / (2 - theta)
+        * (scipy.special.digamma(2) - scipy.special.digamma(2 / theta + 1)),
+        atol=1e-2,
+    )
+    # test the margins
+    copula_margins(samples)
+
+
+def debye1(x):
+    """The first Debye function"""
+    return (
+        np.log(1 - np.exp(-x)) * x
+        + scipy.special.zeta(2)
+        - scipy.special.spence(1 - np.exp(-x))
+    ) / x
+
+
+@pytest.mark.parametrize("theta", [0.001, 0.5, 2, 4])
+def test_frank_copula(theta):
+    samples = copulas.FrankCopula(theta, 2).generate(100000)
+    # calculate the Kendall's tau value
+    k = scipy.stats.kendalltau(samples[0].values, samples[1].values).statistic
+    assert np.isclose(
+        k,
+        1 + 4 / theta * (debye1(theta) - 1),
+        atol=1e-2,
+    )
     # test the margins
     copula_margins(samples)

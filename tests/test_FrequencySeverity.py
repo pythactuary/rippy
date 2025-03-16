@@ -113,3 +113,10 @@ def test_math_operations():
     assert np.array_equal(
         arr_to_power_fs1.values, np.array([1, 1, 8, 16, 32, 729, 2187, 6561, 19683])
     )
+
+def test_get_sims():
+    sim_index = np.array([0, 0, 1, 1, 1, 2, 2, 2, 2])
+    values = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    fs = FreqSevSims(sim_index=sim_index,values=values, n_sims=3)
+    selected_values = fs[1]
+    assert (selected_values.values == [3, 4, 5]).all()

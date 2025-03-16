@@ -34,8 +34,8 @@ class FrequencySeverityModel:
 
     def __init__(
         self,
-        freq_dist: Distributions.Distribution,
-        sev_dist: Distributions.Distribution,
+        freq_dist: Distributions.DistributionBase,
+        sev_dist: Distributions.DistributionBase,
     ):
         self.freq_dist = freq_dist
         self.sev_dist = sev_dist
@@ -135,13 +135,8 @@ class FreqSevSims(ProteusStochasticVariable):
         """Reorder the simulations of the FreqSevSims object according to the given order."""
         reverse_ordering = np.empty(len(ordering), dtype=int)
         reverse_ordering[ordering] = np.arange(len(ordering), dtype=int)
-        sim_index_reordering = reverse_ordering[self.sim_index].astype(int)
-        sort_index_sim_index_reordering = np.argsort(sim_index_reordering)
-        reorderd_values = self.values[sort_index_sim_index_reordering]
-        reorderd_sim_index = sim_index_reordering[sort_index_sim_index_reordering]
         # reset the simulation index
-        self.sim_index = reorderd_sim_index
-        self.values = reorderd_values
+        self.sim_index = reverse_ordering[self.sim_index]
 
     def __getitem__(self, sim_index: int) -> StochasticScalar:
         """Returns the values of the simulation with the given simulation index."""

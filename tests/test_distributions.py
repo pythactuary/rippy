@@ -6,6 +6,22 @@ import scipy.special
 from scipy.special import gamma
 
 
+def test_Poisson():
+    set_random_seed(12345678910)
+    lamda = 3.5
+    dist = Distributions.Poisson(lamda)
+    assert dist.cdf(0) == np.exp(-lamda)
+    assert dist.invcdf(0) == 0
+    assert np.allclose(
+        dist.invcdf(dist.cdf(np.array([0, 2, 5, 10]))),
+        np.array([0, 2, 5, 10]),
+        1e-8,
+    )
+    sims = dist.generate(100000)
+    assert np.isclose(sims.mean(), lamda, 1e-3)
+    assert np.isclose(sims.std() ** 2, lamda, 1e-2)
+
+
 def test_Beta():
     set_random_seed(12345678910)
     alpha = 2

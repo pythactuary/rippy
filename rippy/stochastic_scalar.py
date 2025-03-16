@@ -1,5 +1,5 @@
 from __future__ import annotations
-import numpy as np
+from .config import xp as np
 from numpy.typing import ArrayLike
 from .couplings import ProteusStochasticVariable
 from typing import Union, TypeVar
