@@ -4,6 +4,7 @@ from .FrequencySeverity import FreqSevSims
 from .stochastic_scalar import StochasticScalar
 import numpy as np
 import scipy.stats
+import plotly.graph_objects as go
 
 
 class ProteusVariable:
@@ -189,3 +190,33 @@ class ProteusVariable:
             result = list(np.corrcoef(values))
 
         return result
+
+    def show_histogram(self):
+
+        fig = go.Figure()
+        labels = (
+            self.values.keys()
+            if isinstance(self.values, dict)
+            else range(len(self.values))
+        )
+        for value, label in zip(self.values.values(), labels):
+            fig.add_trace(go.Histogram(x=value.values, name=label))
+        fig.show()
+
+    def show_cdf(self):
+
+        fig = go.Figure()
+        labels = (
+            self.values.keys()
+            if isinstance(self.values, dict)
+            else range(len(self.values))
+        )
+        for value, label in zip(self.values.values(), labels):
+            fig.add_trace(
+                go.Scatter(
+                    x=np.sort(value.values),
+                    y=np.arange(value.n_sims) / value.n_sims,
+                    name=label,
+                )
+            )
+        fig.show()

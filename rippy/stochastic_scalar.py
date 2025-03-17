@@ -4,6 +4,7 @@ from numpy.typing import ArrayLike
 from .couplings import ProteusStochasticVariable
 from typing import Union, TypeVar
 import math
+import plotly.graph_objects as go
 
 Numeric = Union[int, float]
 NumberOrList = TypeVar("NumberOrList", Numeric, list[Numeric])
@@ -215,28 +216,14 @@ class StochasticScalar(ProteusStochasticVariable):
             return result
         raise ValueError("Index must be an integer, StochasticScalar or numpy array.")
 
+    def show_histogram(self):
+        fig = go.Figure(go.Histogram(x=self.values))
+        fig.show()
 
-try:
-    import plotly.graph_objects as go
-
-    class StochasticScalar(StochasticScalar):
-
-        def __init__(self, values):
-            super().__init__(values=values)
-
-        def show_histogram(self):
-            fig = go.Figure(go.Histogram(x=self.values))
-            fig.show()
-
-        def show_cdf(self):
-            fig = go.Figure(
-                go.Scatter(
-                    x=np.sort(self.values), y=np.arange(self.n_sims) / self.n_sims
-                )
-            )
-            fig.update_xaxes(dict(title="Value"))
-            fig.update_yaxes(dict(title="Cumulative Probability"))
-            fig.show()
-
-except ImportError:
-    pass
+    def show_cdf(self):
+        fig = go.Figure(
+            go.Scatter(x=np.sort(self.values), y=np.arange(self.n_sims) / self.n_sims)
+        )
+        fig.update_xaxes(dict(title="Value"))
+        fig.update_yaxes(dict(title="Cumulative Probability"))
+        fig.show()
