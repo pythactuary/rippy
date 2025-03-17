@@ -22,6 +22,34 @@ def test_Poisson():
     assert np.isclose(sims.std() ** 2, lamda, 1e-2)
 
 
+def test_Poisson_gamma():
+    """Tests the Poisson distribution with a gamma distributed lambda."""
+    set_random_seed(12345678910)
+    alpha = 0.5
+    beta = 3
+    lamda = Distributions.Gamma(alpha, beta).generate(100000)
+    sims = Distributions.Poisson(lamda).generate(100000)
+    sims_mean = sims.mean()
+    sims_std = sims.std()
+    assert np.isclose(sims_mean, alpha * beta, 1e-2)
+    assert np.isclose(sims_std**2, alpha * beta + alpha * beta**2, 1e-2)
+    assert sims.coupled_variable_group == lamda.coupled_variable_group
+
+
+def test_gamma_exp():
+    """Tests the Exponential distribution with a gamma distributed lambda."""
+    set_random_seed(12345678910)
+    alpha = 1.5
+    beta = 3
+    lamda = Distributions.Gamma(alpha, beta).generate(1000000)
+    sims = Distributions.Exponential(lamda).generate(1000000)
+    sims_mean = sims.mean()
+    sims_std = sims.std()
+    assert np.isclose(sims_mean, alpha * beta, 1e-2)
+    assert np.isclose(sims_std**2, (2 * alpha + alpha**2) * beta**2, 1e-2)
+    assert sims.coupled_variable_group == lamda.coupled_variable_group
+
+
 def test_Beta():
     set_random_seed(12345678910)
     alpha = 2
@@ -116,6 +144,25 @@ def test_InverseBurr():
         * scale,
         1e-3,
     )
+
+
+def test_Logistic():
+    set_random_seed(12345678910)
+    mu = 2.5
+    sigma = 2
+    dist = Distributions.Logistic(mu, sigma)
+    assert dist.cdf(2.5) == 0.5
+    assert dist.invcdf(0.5) == 2.5
+    assert np.allclose(
+        dist.invcdf(dist.cdf(np.array([1.1, 2, 3]))),
+        np.array([1.1, 2, 3]),
+    )
+
+    sims = dist.generate(10000000)
+    sims_mean = sims.mean()
+    sims_std = sims.std()
+    assert np.isclose(sims_mean, mu, 1e-3)
+    assert np.isclose(sims_std, np.pi * sigma / np.sqrt(3), 1e-3)
 
 
 def test_LogLogistic():

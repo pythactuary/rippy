@@ -18,8 +18,13 @@ class StochasticScalar(ProteusStochasticVariable):
     def __init__(self, values: ArrayLike):
         super().__init__()
         assert hasattr(values, "__getitem__"), "Values must be an array-like object."
-        self.values = np.asarray(values)
-        self.n_sims = len(self.values)
+        if isinstance(values, StochasticScalar):
+            self.values = values.values
+            self.n_sims = values.n_sims
+            self.coupled_variable_group = values.coupled_variable_group
+        else:
+            self.values = np.asarray(values)
+            self.n_sims = len(self.values)
 
     def __hash__(self):
         return id(self)
