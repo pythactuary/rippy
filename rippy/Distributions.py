@@ -10,6 +10,12 @@ else:
     import scipy.special as special
 
 from abc import ABC, abstractmethod
+from typing import TypeVar, Union
+
+NumberType = Union[float, int]
+NumberOrStochasticScalar = TypeVar(
+    "NumberOrStochasticScalar", NumberType, StochasticScalar
+)
 
 
 class DistributionBase(ABC):
@@ -19,11 +25,11 @@ class DistributionBase(ABC):
         pass
 
     @abstractmethod
-    def cdf(self, x):
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         pass
 
     @abstractmethod
-    def invcdf(self, u):
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         pass
 
     def generate(
@@ -55,11 +61,11 @@ class DiscreteDistributionBase(DistributionBase, ABC):
         pass
 
     @abstractmethod
-    def cdf(self, x):
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         pass
 
     @abstractmethod
-    def invcdf(self, u):
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         pass
 
 
@@ -81,7 +87,7 @@ class Poisson(DiscreteDistributionBase):
     def __init__(self, mean):
         self.mean = mean
 
-    def cdf(self, x: StochasticScalar | int) -> StochasticScalar | int:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function (CDF) of the Poisson distribution.
 
@@ -93,7 +99,7 @@ class Poisson(DiscreteDistributionBase):
         """
         return special.pdtr(x, self.mean)
 
-    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the inverse cumulative distribution function of the Poisson distribution.
 
@@ -106,6 +112,10 @@ class Poisson(DiscreteDistributionBase):
         return special.pdtrik(u, self.mean)
 
     def _generate(self, n_sims, rng: np.random.Generator) -> StochasticScalar:
+        if isinstance(self.mean, StochasticScalar):
+            result = StochasticScalar(rng.poisson(self.mean.values, n_sims))
+            result.coupled_variable_group.merge(self.mean.coupled_variable_group)
+            return result
         return StochasticScalar(rng.poisson(self.mean, n_sims))
 
 
@@ -140,7 +150,7 @@ class NegBinomial(DiscreteDistributionBase):
         self.n = n
         self.p = p
 
-    def cdf(self, x) -> StochasticScalar:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function of the Negative Binomial distribution.
 
@@ -148,11 +158,11 @@ class NegBinomial(DiscreteDistributionBase):
             x (float): The value at which to evaluate the cumulative distribution function.
 
         Returns:
-            StochasticScalar: The cumulative distribution function value at the given value.
+            NumberOrStochasticScalar: The cumulative distribution function value at the given value.
         """
         return special.nbdtr(x, self.n, self.p)
 
-    def invcdf(self, u) -> StochasticScalar:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the inverse cumulative distribution function of the Negative Binomial distribution.
 
@@ -176,7 +186,7 @@ class NegBinomial(DiscreteDistributionBase):
         Returns:
             numpy.ndarray: Array of random samples from the Negative Binomial distribution.
         """
-        return rng.negative_binomial(self.n, self.p, n_sims)
+        return StochasticScalar(rng.negative_binomial(self.n, self.p, n_sims))
 
 
 class Binomial(DiscreteDistributionBase):
@@ -209,7 +219,7 @@ class Binomial(DiscreteDistributionBase):
         self.n = int(n)
         self.p = p
 
-    def cdf(self, x) -> StochasticScalar:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function of the Binomial distribution.
 
@@ -221,7 +231,7 @@ class Binomial(DiscreteDistributionBase):
         """
         return special.bdtr(x, self.n, self.p)
 
-    def invcdf(self, u) -> StochasticScalar:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the inverse cumulative distribution function of the Binomial distribution.
 
@@ -245,7 +255,7 @@ class Binomial(DiscreteDistributionBase):
         Returns:
             numpy.ndarray: Array of random samples from the Binomial distribution.
         """
-        return rng.binomial(self.n, self.p, n_sims)
+        return StochasticScalar(rng.binomial(self.n, self.p, n_sims))
 
 
 class HyperGeometric(DiscreteDistributionBase):
@@ -280,7 +290,7 @@ class HyperGeometric(DiscreteDistributionBase):
         self.nbad = nbad
         self.n = population_size
 
-    def cdf(self, x) -> StochasticScalar:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function of the Hyper Geometric distribution.
 
@@ -292,7 +302,7 @@ class HyperGeometric(DiscreteDistributionBase):
         """
         return NotImplemented
 
-    def invcdf(self, u) -> StochasticScalar:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the inverse cumulative distribution function of the Hyper Geometric distribution.
 
@@ -338,16 +348,16 @@ class GPD(DistributionBase):
 
     def __init__(
         self,
-        shape: StochasticScalar | float,
-        scale: StochasticScalar | float,
-        loc: StochasticScalar | float,
+        shape: NumberOrStochasticScalar,
+        scale: NumberOrStochasticScalar,
+        loc: NumberOrStochasticScalar,
     ):
         """Initializes a new instance of the Generalised Pareto distribution with the specified scale, shape and location"""
         self.shape = shape
         self.scale = scale
         self.loc = loc
 
-    def cdf(self, x: StochasticScalar | float):
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         r"""Calculates the cdf of the Generalized Pareto distribution.
 
         The cdf Generalised Pareto distribution is defined as
@@ -365,7 +375,7 @@ class GPD(DistributionBase):
         )
         return result
 
-    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """Calculates the inverse cdf of the Generalized Pareto distribution"""
         xi = self.shape
         sigma = self.scale
@@ -387,10 +397,10 @@ class Burr(DistributionBase):
 
     def __init__(
         self,
-        power: StochasticScalar | float,
-        shape: StochasticScalar | float,
-        scale: StochasticScalar | float,
-        loc: StochasticScalar | float,
+        power: NumberOrStochasticScalar,
+        shape: NumberOrStochasticScalar,
+        scale: NumberOrStochasticScalar,
+        loc: NumberOrStochasticScalar,
     ):
         """
         Creates a new Burr distribution.
@@ -406,7 +416,7 @@ class Burr(DistributionBase):
         self.scale = scale
         self.loc = loc
 
-    def cdf(self, x: StochasticScalar) -> StochasticScalar:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function (CDF) of the Burr distribution.
 
@@ -419,7 +429,7 @@ class Burr(DistributionBase):
         result = 1 - (1 + ((x - self.loc) / self.scale) ** self.power) ** (-self.shape)
         return result
 
-    def invcdf(self, u: StochasticScalar) -> StochasticScalar:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the inverse cumulative distribution function (CDF) of the Burr distribution.
 
@@ -461,7 +471,7 @@ class Beta(DistributionBase):
         self.scale = scale
         self.loc = loc
 
-    def cdf(self, x) -> np.ndarray | float:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function (CDF) of the Beta distribution.
 
@@ -473,7 +483,7 @@ class Beta(DistributionBase):
         """
         return special.betainc(self.alpha, self.beta, (x - self.loc) / self.scale)
 
-    def invcdf(self, u) -> np.ndarray | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the inverse cumulative distribution function (CDF) of the Beta distribution.
 
@@ -513,7 +523,7 @@ class InverseBurr(DistributionBase):
         self.scale = scale
         self.loc = loc
 
-    def cdf(self, x: StochasticScalar | float) -> StochasticScalar | float:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function (CDF) of the Inverse Burr distribution.
 
@@ -528,7 +538,7 @@ class InverseBurr(DistributionBase):
 
         return (y / (1 + y)) ** self.shape
 
-    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the inverse cumulative distribution function (CDF) of the Inverse Burr distribution.
 
@@ -588,7 +598,7 @@ class LogLogistic(DistributionBase):
         y = ((x - self.loc) / self.scale) ** (self.shape)
         return y / (1 + y)
 
-    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the inverse cdf of the Log Logistic distribution.
 
@@ -615,7 +625,7 @@ class Normal(DistributionBase):
         self.mu = mu
         self.sigma = sigma
 
-    def cdf(self, x: StochasticScalar | float) -> StochasticScalar | float:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function (CDF) of the Normal Distribution.
 
@@ -627,7 +637,7 @@ class Normal(DistributionBase):
         """
         return special.ndtr((x - self.mu) / self.sigma)
 
-    def invcdf(self, u) -> StochasticScalar | float:
+    def invcdf(self, u) -> NumberOrStochasticScalar:
         """Calculates the inverse cdf of the Normal Distribution
 
         Parameters:
@@ -637,6 +647,20 @@ class Normal(DistributionBase):
         float or ndarray: The corresponding value(s) from the inverse cdf of the Normal Distribution.
         """
         return special.ndtri(u) * self.sigma + self.mu
+
+
+class Logistic(DistributionBase):
+    """Logistic Distribution."""
+
+    def __init__(self, mu: float, sigma: float):
+        self.mu = mu
+        self.sigma = sigma
+
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
+        return 1 / (1 - np.exp(-(x - self.mu) / self.sigma))
+
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
+        return self.mu + self.sigma * np.log(u / (1 - u))
 
 
 class LogNormal(DistributionBase):
@@ -652,7 +676,7 @@ class LogNormal(DistributionBase):
         self.mu = mu
         self.sigma = sigma
 
-    def cdf(self, x: np.ndarray | float) -> np.ndarray | float:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function (CDF) of the Log-Normal Distribution.
 
@@ -664,7 +688,7 @@ class LogNormal(DistributionBase):
         """
         return special.ndtr((np.log(x) - self.mu) / self.sigma)
 
-    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """Calculates the inverse cdf of the Log-Normal Distribution
 
         Parameters:
@@ -698,7 +722,7 @@ class Gamma(DistributionBase):
         self.theta = theta
         self.loc = loc
 
-    def cdf(self, x: StochasticScalar | float) -> StochasticScalar | float:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function (CDF) of the Gamma Distribution.
 
@@ -710,7 +734,7 @@ class Gamma(DistributionBase):
         """
         return special.gammainc(self.alpha, (x - self.loc) / self.theta)
 
-    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """Calculates the inverse cdf of the Gamma Distribution
 
         Parameters:
@@ -749,7 +773,7 @@ class InverseGamma(DistributionBase):
         self.theta = theta
         self.loc = loc
 
-    def cdf(self, x: StochasticScalar | float) -> StochasticScalar | float:
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """
         Calculates the cumulative distribution function (CDF) of the Inverse Gamma Distribution.
 
@@ -761,7 +785,7 @@ class InverseGamma(DistributionBase):
         """
         return special.gammaincc(self.alpha, np.divide(self.theta, (x - self.loc)))
 
-    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """Calculates the inverse cdf of the Inverse Gamma Distribution
 
         Parameters:
@@ -811,7 +835,7 @@ class Pareto(DistributionBase):
         """
         return 1 - (x / self.scale) ** (-self.shape)
 
-    def invcdf(self, u) -> StochasticScalar | float:
+    def invcdf(self, u) -> NumberOrStochasticScalar:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Pareto distribution.
 
         Args:
@@ -857,7 +881,7 @@ class Paralogistic(DistributionBase):
         y = 1 / (1 + ((x - self.loc) / self.scale) ** (self.shape))
         return 1 - (y) ** self.shape
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the ParaLogistic distribution.
 
         Args:
@@ -879,9 +903,11 @@ class InverseParalogistic(DistributionBase):
     The cumulative distribution function (CDF) of the ParaLogistic distribution is given by:
 
     .. math::
-        F(x) = \left[\frac{\left(\frac{x-\mu}{\sigma}\right)^\alpha}{\left(1+\frac{x-\mu}{\sigma}\right)^\alpha}\right]^{-\alpha}, x>\mu
+        F(x) = \left[\frac{\left(\frac{x-\mu}{\sigma}\right)^\alpha}
+        {\left(1+\frac{x-\mu}{\sigma}\right)^\alpha}\right]^{-\alpha}, x>\mu
 
-    where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location parameter :math:`\mu` is any real number.
+    where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location
+    parameter :math:`\mu` is any real number.
 
     Args:
         shape (float): The shape parameter of the Inverse Paralogistic distribution.
@@ -905,8 +931,9 @@ class InverseParalogistic(DistributionBase):
         y = ((x - self.loc) / self.scale) ** (self.shape)
         return (y / (1 + y)) ** self.shape
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
-        """Calculates the inverse cumulative distribution function (inverse CDF) of the Inverse ParaLogistic distribution.
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
+        """Calculates the inverse cumulative distribution function (inverse CDF) of the Inverse ParaLogistic
+        distribution.
 
         Args:
             u (float): The probability value at which to evaluate the inverse CDF.
@@ -928,7 +955,8 @@ class Weibull(DistributionBase):
     .. math::
         F(x) = 1-e^{-((x-\mu)/\\sigma)^\alpha}, x>\mu
 
-    where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location parameter :math:`\mu` is any real number.
+    where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location
+    parameter :math:`\mu` is any real number.
 
     Args:
         shape (float): The shape parameter of the Weibull distribution.
@@ -953,7 +981,7 @@ class Weibull(DistributionBase):
         y = ((x - self.loc) / self.scale) ** (self.shape)
         return -np.expm1(-y)
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Weibull distribution.
 
         Args:
@@ -975,7 +1003,8 @@ class InverseWeibull(DistributionBase):
     .. math::
         F(x) = e^{-((x-\mu)/\\sigma)^{-\alpha}}, x>\mu
 
-    where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location parameter :math:`\mu` is any real number.
+    where the shape parameter :math:`\alpha` and the scale parameter :math:`\sigma` are both positive, and the location
+    parameter :math:`\mu` is any real number.
 
     Args:
         shape (float): The shape parameter of the Inverse Weibull distribution.
@@ -1000,7 +1029,7 @@ class InverseWeibull(DistributionBase):
         y = np.float_power((x - self.loc) / self.scale, -self.shape)
         return np.exp(-y)
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Weibull distribution.
 
         Args:
@@ -1045,7 +1074,7 @@ class Exponential(DistributionBase):
         y = (x - self.loc) / self.scale
         return -np.expm1(-y)
 
-    def invcdf(self, u: np.ndarray | float) -> np.ndarray | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Exponential distribution.
 
         Args:
@@ -1055,6 +1084,50 @@ class Exponential(DistributionBase):
             np.ndarray or float: The inverse CDF value(s) at the given u.
         """
         return self.loc + self.scale * (-np.log(1 - u))
+
+
+class Uniform(DistributionBase):
+    r"""Uniform Distribution
+
+    Represents a Uniform distribution with given parameters.
+
+    The cumulative distribution function (CDF) of the Uniform distribution is given by:
+
+    .. math::
+        F(x) = (x-a)/(b-a), a<=x<=b
+
+
+    Args:
+        a (float): The lower bound.
+        b (float): The upper bound.
+    """
+
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
+        """Calculates the cumulative distribution function (CDF) of the Uniform distribution.
+
+        Args:
+            x (float): The value at which to evaluate the CDF.
+
+        Returns:
+            float: The CDF value at the given x.
+        """
+        y = (x - self.a) / (self.b - self.a)
+        return y
+
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
+        """Calculates the inverse cumulative distribution function (inverse CDF) of the Uniform distribution.
+
+        Args:
+            u (float): The probability value at which to evaluate the inverse CDF.
+
+        Returns:
+            np.ndarray or float: The inverse CDF value(s) at the given u.
+        """
+        return self.a + (self.b - self.a) * u
 
 
 class InverseExponential(DistributionBase):
@@ -1090,7 +1163,7 @@ class InverseExponential(DistributionBase):
         y = self.scale * np.float_power((x - self.loc), -1)
         return np.exp(-y)
 
-    def invcdf(self, u: StochasticScalar | float) -> StochasticScalar | float:
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
         """Calculates the inverse cumulative distribution function (inverse CDF) of the Inverse Exponential distribution.
 
         Args:
@@ -1100,3 +1173,83 @@ class InverseExponential(DistributionBase):
            StochasticScalar or float: The inverse CDF value(s) at the given u.
         """
         return self.loc - self.scale * 1 / (np.log(u))
+
+
+AVAILABLE_DISCRETE_DISTRIBUTIONS = {
+    "poisson": Poisson,
+    "negbinomial": NegBinomial,
+    "binomial": Binomial,
+    "hypergeometric": HyperGeometric,
+}
+
+
+class DistributionGeneratorBase(ABC):
+    """A base class for parameterised distribution generators."""
+
+    this_distribution: DistributionBase
+
+    def cdf(self, x: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
+        return self.this_distribution.cdf(x)
+
+    def invcdf(self, u: NumberOrStochasticScalar) -> NumberOrStochasticScalar:
+        return self.this_distribution.invcdf(u)
+
+    def generate(self, n_sims=None, rng=config.rng) -> StochasticScalar:
+        return self.this_distribution.generate(n_sims, rng)
+
+
+class DiscreteDistribution(DistributionGeneratorBase):
+    """A discrete distribution, created from a string name"""
+
+    def __init__(self, distribution_name: str, parameters: list):
+        if distribution_name.lower() in AVAILABLE_DISCRETE_DISTRIBUTIONS:
+            cls: DistributionBase = AVAILABLE_DISCRETE_DISTRIBUTIONS[
+                distribution_name.lower()
+            ]
+        else:
+            raise (
+                f"Distribution {distribution_name} must be one of {AVAILABLE_DISCRETE_DISTRIBUTIONS.keys()}"
+            )
+
+        this_distribution: DistributionBase = cls(*parameters)
+        self.this_distribution = this_distribution
+
+
+AVAILABLE_CONTINUOUS_DISTRIBUTIONS = {
+    "beta": Beta,
+    "burr": Burr,
+    "exponential": Exponential,
+    "gamma": Gamma,
+    "gpd": GPD,
+    "logistic": Logistic,
+    "lognormal": LogNormal,
+    "loglogistic": LogLogistic,
+    "normal": Normal,
+    "paralogistic": Paralogistic,
+    "pareto": Pareto,
+    "uniform": Uniform,
+    "inverseburr": InverseBurr,
+    "inverseexponential": InverseExponential,
+    "inversegamma": InverseGamma,
+    "inverseparalogistic": InverseParalogistic,
+    "inverseweibull": InverseWeibull,
+    "uniform": Uniform,
+    "weibull": Weibull,
+}
+
+
+class ContinuousDistribution(DistributionGeneratorBase):
+    """A continuous distribution, created from a string name"""
+
+    def __init__(self, distribution_name: str, parameters: list):
+        if distribution_name.lower() in AVAILABLE_CONTINUOUS_DISTRIBUTIONS:
+            cls: DistributionBase = AVAILABLE_CONTINUOUS_DISTRIBUTIONS[
+                distribution_name.lower()
+            ]
+        else:
+            raise (
+                f"Distribution {distribution_name} must be one of {AVAILABLE_CONTINUOUS_DISTRIBUTIONS.keys()}"
+            )
+
+        this_distribution: DistributionBase = cls(*parameters)
+        self.this_distribution = this_distribution

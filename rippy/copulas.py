@@ -7,7 +7,6 @@ else:
     import scipy.special as special
 import scipy.stats.distributions as distributions
 from abc import ABC, abstractmethod
-from line_profiler import profile
 
 
 class Copula(ABC):
@@ -132,9 +131,8 @@ class ArchimedeanCopula(Copula, ABC):
     def __init__(self, n: int):
         self.n = n
 
-    @profile
     def generate(self, n_sims=None, rng=config.rng) -> ProteusVariable:
-        copula_samples = self.generator_inv(self._generate_unnormalised(n_sims, rng))
+        copula_samples = self.generator_inv(-self._generate_unnormalised(n_sims, rng))
         result = ProteusVariable(
             "dim1", [StochasticScalar(sample) for sample in copula_samples]
         )
@@ -151,8 +149,8 @@ class ArchimedeanCopula(Copula, ABC):
         # Generate samples from the latent distribution
         latent_samples = self.generate_latent_distribution(n_sims, rng)
         # Calculate the copula samples
-        copula_samples = -np.log(u) / latent_samples[np.newaxis]
-        return copula_samples
+        un_normalised_copula_samples = np.log(u) / latent_samples[np.newaxis]
+        return un_normalised_copula_samples
 
 
 class ClaytonCopula(ArchimedeanCopula):
@@ -292,7 +290,6 @@ def _sibuya_gen(alpha, size, rng: np.random.Generator):
     return 1 + rng.poisson(u, size=size)
 
 
-@profile
 def apply_copula(
     variables: list[StochasticScalar],
     copula_samples: list[StochasticScalar],

@@ -5,9 +5,11 @@ from .couplings import ProteusStochasticVariable
 from typing import Union, TypeVar
 import math
 
-# import a number type
 Numeric = Union[int, float]
 NumberOrList = TypeVar("NumberOrList", Numeric, list[Numeric])
+NumericOrStochasticScalar = TypeVar(
+    "NumericOrStochasticScalar", Numeric, "StochasticScalar"
+)
 
 
 class StochasticScalar(ProteusStochasticVariable):
@@ -197,7 +199,9 @@ class StochasticScalar(ProteusStochasticVariable):
         return f"StochasticScalar(values={self.values})\nn_sims={self.n_sims})"
 
     # implement the index referencing
-    def __getitem__(self, index: int | StochasticScalar) -> float | StochasticScalar:
+    def __getitem__(
+        self, index: NumericOrStochasticScalar
+    ) -> NumericOrStochasticScalar:
         if isinstance(index, int):
             return self.values[index]
         elif isinstance(index, StochasticScalar):
@@ -217,6 +221,16 @@ try:
 
         def show_histogram(self):
             fig = go.Figure(go.Histogram(x=self.values))
+            fig.show()
+
+        def show_cdf(self):
+            fig = go.Figure(
+                go.Scatter(
+                    x=np.sort(self.values), y=np.arange(self.n_sims) / self.n_sims
+                )
+            )
+            fig.update_xaxes(dict(title="Value"))
+            fig.update_yaxes(dict(title="Cumulative Probability"))
             fig.show()
 
 except ImportError:

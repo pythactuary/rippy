@@ -1,5 +1,14 @@
+import numpy as np
+
 from rippy.variables import StochasticScalar
-import pytest
+import pytest  # noqa
+
+
+def test_empty():
+    """Tests an empty stochastic scalar."""
+    x = StochasticScalar([])
+    assert x.n_sims == 0
+    assert x.ssum() == 0
 
 
 def test_stochastic_scalar():
@@ -200,16 +209,13 @@ def test_and():
     )
 
 
-import numpy as np
-
-
 def test_numpy_ufunc():
     """Tests that a numpy ufunc can be applied to a stochastic scalar."""
     x = StochasticScalar([4, 5, 2, 1, 3])
     y = np.exp(x)
     assert (y.values == np.exp([4, 5, 2, 1, 3])).all()
     assert x.coupled_variable_group == y.coupled_variable_group
-    assert type(y) == StochasticScalar
+    assert type(y) is StochasticScalar
 
 
 def test_ssum():
