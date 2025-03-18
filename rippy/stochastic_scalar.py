@@ -16,6 +16,13 @@ NumericOrStochasticScalar = TypeVar(
 class StochasticScalar(ProteusStochasticVariable):
     """A class to represent a single scalar variable in a simulation."""
 
+    @property
+    def ranks(self) -> StochasticScalar:
+        """Return the ranks of the variable."""
+        result = np.empty(self.n_sims, dtype=int)
+        result[np.argsort(self.values)] = np.arange(self.n_sims)
+        return StochasticScalar(result)
+
     def __init__(self, values: ArrayLike):
         super().__init__()
         assert hasattr(values, "__getitem__"), "Values must be an array-like object."
@@ -60,7 +67,7 @@ class StochasticScalar(ProteusStochasticVariable):
 
         return result
 
-    def _binary_operation(self, other, operation):
+    def _binary_operation(self, other, operation, is_reversible=True):
         if isinstance(other, StochasticScalar):
             if self.n_sims != other.n_sims:
                 raise ValueError("Number of simulations do not match.")
@@ -68,10 +75,18 @@ class StochasticScalar(ProteusStochasticVariable):
             self.coupled_variable_group.merge(other.coupled_variable_group)
             result.coupled_variable_group.merge(self.coupled_variable_group)
             return result
-        else:
+        elif isinstance(other, (int, float)):
             result = StochasticScalar(operation(self.values, other))
             result.coupled_variable_group.merge(self.coupled_variable_group)
             return result
+        elif is_reversible:
+            # try the reverse operation on the other object
+            result = operation(other, self)
+            return result
+        else:
+            raise ValueError(
+                f"Operation not supported on {type(self)} and {type(other)}."
+            )
 
     def __add__(self, other):
         return self._binary_operation(other, lambda x, y: x + y)
@@ -80,7 +95,7 @@ class StochasticScalar(ProteusStochasticVariable):
         return self.__add__(other)
 
     def __sub__(self, other):
-        return self._binary_operation(other, lambda x, y: x - y)
+        return self._binary_operation(other, lambda x, y: x - y, False)
 
     def __rsub__(self, other):
         result = StochasticScalar(other - self.values)
@@ -94,7 +109,7 @@ class StochasticScalar(ProteusStochasticVariable):
         return self.__mul__(other)
 
     def __truediv__(self, other):
-        return self._binary_operation(other, lambda x, y: x / y)
+        return self._binary_operation(other, lambda x, y: x / y, False)
 
     def __rtruediv__(self, other):
         result = StochasticScalar(other / self.values)
@@ -102,7 +117,7 @@ class StochasticScalar(ProteusStochasticVariable):
         return result
 
     def __pow__(self, other):
-        return self._binary_operation(other, lambda x, y: x**y)
+        return self._binary_operation(other, lambda x, y: x**y, False)
 
     def __rpow__(self, other):
         result = StochasticScalar(other**self.values)
@@ -116,16 +131,16 @@ class StochasticScalar(ProteusStochasticVariable):
         return self._binary_operation(other, lambda x, y: x != y)
 
     def __lt__(self, other):
-        return self._binary_operation(other, lambda x, y: x < y)
+        return self._binary_operation(other, lambda x, y: x < y, False)
 
     def __le__(self, other):
-        return self._binary_operation(other, lambda x, y: x <= y)
+        return self._binary_operation(other, lambda x, y: x <= y, False)
 
     def __gt__(self, other):
-        return self._binary_operation(other, lambda x, y: x > y)
+        return self._binary_operation(other, lambda x, y: x > y, False)
 
     def __ge__(self, other):
-        return self._binary_operation(other, lambda x, y: x >= y)
+        return self._binary_operation(other, lambda x, y: x >= y, False)
 
     def _req__(self, other):
         return self.__eq__(other)

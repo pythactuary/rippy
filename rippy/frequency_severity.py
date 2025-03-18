@@ -5,7 +5,7 @@ from .stochastic_scalar import (
     StochasticScalar,
 )
 from .config import config, xp as np
-from . import Distributions
+from . import distributions
 
 ProteusCompatibleTypes = Union["FreqSevSims", StochasticScalar, int, float, np.ndarray]
 
@@ -34,8 +34,8 @@ class FrequencySeverityModel:
 
     def __init__(
         self,
-        freq_dist: Distributions.DistributionBase,
-        sev_dist: Distributions.DistributionBase,
+        freq_dist: distributions.DistributionBase,
+        sev_dist: distributions.DistributionBase,
     ):
         self.freq_dist = freq_dist
         self.sev_dist = sev_dist
@@ -135,7 +135,6 @@ class FreqSevSims(ProteusStochasticVariable):
         """Reorder the simulations of the FreqSevSims object according to the given order."""
         reverse_ordering = np.empty(len(ordering), dtype=int)
         reverse_ordering[ordering] = np.arange(len(ordering), dtype=int)
-        # reset the simulation index
         self.sim_index = reverse_ordering[self.sim_index]
 
     def __getitem__(self, sim_index: int) -> StochasticScalar:

@@ -1,10 +1,12 @@
 from __future__ import annotations
 from typing import Union
-from .FrequencySeverity import FreqSevSims
+from .frequency_severity import FreqSevSims
 from .stochastic_scalar import StochasticScalar
+from .catastrophes import SimEventLossTable
 import numpy as np
 import scipy.stats
 import plotly.graph_objects as go
+from typing import Union
 
 
 class ProteusVariable:
@@ -57,19 +59,97 @@ class ProteusVariable:
                 self.dimensions.extend(value.dimensions)
 
             if self.n_sims is None:
-                if isinstance(value, ProteusVariable) or isinstance(
-                    value, StochasticScalar
+                if (
+                    isinstance(value, ProteusVariable)
+                    or isinstance(value, StochasticScalar)
+                    or isinstance(value, SimEventLossTable)
                 ):
                     self.n_sims = value.n_sims
-                self.n_sims = 1
-            elif isinstance(value, ProteusVariable) or isinstance(
-                value, StochasticScalar
+                else:
+                    self.n_sims = 1
+            elif (
+                isinstance(value, ProteusVariable)
+                or isinstance(value, StochasticScalar)
+                or isinstance(value, SimEventLossTable)
             ):
                 if value.n_sims != self.n_sims:
                     if self.n_sims == 1:
                         self.n_sims == value.n_sims
                     else:
                         raise ValueError("Number of simulations do not match.")
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if method != "__call__":
+            return NotImplemented
+
+        def recursive_apply(*items):
+            # If none of the items is a ProteusVariable (i.e. a container), then
+            # assume they are leaf nodes (e.g., numbers or stochastic types) and simply call ufunc.
+            if not any(isinstance(item, ProteusVariable) for item in items):
+                # For stochastic types that implement __array_ufunc__, this call will
+                # automatically delegate to their own __array_ufunc__.
+                return ufunc(*items, **kwargs)
+
+            # Otherwise, at least one of the items is a container.
+            # We assume that the container structure is consistent across items.
+            first = items[0]
+            if isinstance(first, ProteusVariable):
+                # Process dictionary containers.
+                if isinstance(first.values, dict):
+                    new_data = {}
+                    # Iterate over each key in the container.
+                    for key in first.values:
+                        new_items = []
+                        for item in items:
+                            if isinstance(item, ProteusVariable):
+                                new_items.append(item.values[key])
+                            else:
+                                new_items.append(item)
+                        new_data[key] = recursive_apply(*new_items)
+                    return ProteusVariable(first.dim_name, new_data)
+                # Process list containers.
+                elif isinstance(first.values, list):
+                    new_list = []
+                    for idx, _ in enumerate(first.values):
+                        new_items = []
+                        for item in items:
+                            if isinstance(item, ProteusVariable):
+                                new_items.append(item.values[idx])
+                            else:
+                                new_items.append(item)
+                        new_list.append(recursive_apply(*new_items))
+                    return ProteusVariable(first.dim_name, new_list)
+                else:
+                    # In case data is neither dict nor list, try applying ufunc directly.
+                    return ufunc(first.values, **kwargs)
+            else:
+                # If the first item is not a container but some other item is,
+                # we assume they can all be processed by ufunc.
+                return ufunc(*items, **kwargs)
+
+        return recursive_apply(*inputs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        args = [
+            (
+                (
+                    list(arg.values.values())
+                    if isinstance(arg.values, dict)
+                    else arg.values
+                )
+                if isinstance(arg, ProteusVariable)
+                else arg
+            )
+            for arg in args
+        ]
+        temp = func(*args, **kwargs)
+        if isinstance(self.values, dict):
+            return ProteusVariable(
+                self.dim_name,
+                {key: temp[i] for i, key in enumerate(self.values.keys())},
+            )
+        else:
+            return ProteusVariable(self.dim_name, [value for value in temp])
 
     def sum(self, dimensions: list[str] = []) -> ProteusVariable | StochasticScalar:
         """Sum the variables across the specified dimensions. Returns a new ProteusVariable with the summed values."""
@@ -129,7 +209,6 @@ class ProteusVariable:
     def __add__(
         self, other: ProteusVariable | StochasticScalar | float | int
     ) -> ProteusVariable:
-        """Add two ProteusVariable objects together. Returns a new ProteusVariable object with the summed values."""
         return self._binary_operation(other, lambda a, b: a + b)
 
     def __radd__(self, other) -> ProteusVariable:
@@ -140,6 +219,36 @@ class ProteusVariable:
 
     def __rmul__(self, other) -> ProteusVariable:
         return self.__mul__(other)
+
+    def __sub__(self, other) -> ProteusVariable:
+        return self._binary_operation(other, lambda a, b: a - b)
+
+    def __rsub__(self, other) -> ProteusVariable:
+        return self._binary_operation(other, lambda a, b: b - a)
+
+    def __ge__(self, other) -> ProteusVariable:
+        return self._binary_operation(other, lambda a, b: a >= b)
+
+    def __le__(self, other) -> ProteusVariable:
+        return self._binary_operation(other, lambda a, b: a <= b)
+
+    def __gt__(self, other) -> ProteusVariable:
+        return self._binary_operation(other, lambda a, b: a > b)
+
+    def __lt__(self, other) -> ProteusVariable:
+        return self._binary_operation(other, lambda a, b: a < b)
+
+    def __rge__(self, other) -> ProteusVariable:
+        return self.__lt__(other)
+
+    def __rle__(self, other) -> ProteusVariable:
+        return self.__gt__(other)
+
+    def __rgt__(self, other) -> ProteusVariable:
+        return self.__le__(other)
+
+    def __rlt__(self, other) -> ProteusVariable:
+        return self.__ge__(other)
 
     def __getitem__(self, key: str | int):
         if isinstance(self.values, dict):
@@ -219,4 +328,6 @@ class ProteusVariable:
                     name=label,
                 )
             )
+        fig.update_xaxes(title_text="Value")
+        fig.update_yaxes(title_text="Cumulative Probability")
         fig.show()

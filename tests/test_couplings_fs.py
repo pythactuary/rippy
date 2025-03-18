@@ -1,7 +1,7 @@
 from rippy.variables import StochasticScalar
 from rippy.copulas import apply_copula, GumbelCopula
-from rippy.FrequencySeverity import FreqSevSims, FrequencySeverityModel
-from rippy.Distributions import GPD, Poisson, Normal
+from rippy.frequency_severity import FreqSevSims, FrequencySeverityModel
+from rippy.distributions import GPD, Poisson, Normal
 import numpy as np
 import scipy
 
@@ -75,7 +75,7 @@ def test_fs_reordering3():
     y1 = y * 3
     a = x1.aggregate()
     b = y1.aggregate()
-    GumbelCopula(1.5, 2).apply([a,b])
+    GumbelCopula(1.5, 2).apply([a, b])
     # check the copula has been applied correctly
     calculated_tau = scipy.stats.kendalltau(a.values, b.values).statistic
     assert np.isclose(calculated_tau, 1 - 1 / 1.5, atol=1e-2)
@@ -84,5 +84,3 @@ def test_fs_reordering3():
     re_calculated_b = (y * 3).aggregate()
     assert np.allclose(re_calculated_a.values, a.values, atol=1e-10)
     assert np.allclose(re_calculated_b.values, b.values, atol=1e-10)
-
-

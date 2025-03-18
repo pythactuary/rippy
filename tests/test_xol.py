@@ -111,4 +111,4 @@ def test_XoL_aggregate_deductible():
         250000 * (350000 / 600000),
         0,
     ]
-    assert np.allclose(result.reinstatement_premium.tolist(), [700])
+    assert np.allclose(result.reinstatement_premium.values.tolist(), [700])

@@ -1,4 +1,4 @@
-from rippy import Distributions
+from rippy import distributions
 from rippy.config import set_random_seed, xp as np
 import pytest
 import math
@@ -9,7 +9,7 @@ from scipy.special import gamma
 def test_Poisson():
     set_random_seed(12345678910)
     lamda = 3.5
-    dist = Distributions.Poisson(lamda)
+    dist = distributions.Poisson(lamda)
     assert dist.cdf(0) == np.exp(-lamda)
     assert dist.invcdf(0) == 0
     assert np.allclose(
@@ -27,8 +27,8 @@ def test_Poisson_gamma():
     set_random_seed(12345678910)
     alpha = 0.5
     beta = 3
-    lamda = Distributions.Gamma(alpha, beta).generate(100000)
-    sims = Distributions.Poisson(lamda).generate(100000)
+    lamda = distributions.Gamma(alpha, beta).generate(100000)
+    sims = distributions.Poisson(lamda).generate(100000)
     sims_mean = sims.mean()
     sims_std = sims.std()
     assert np.isclose(sims_mean, alpha * beta, 1e-2)
@@ -41,8 +41,8 @@ def test_gamma_exp():
     set_random_seed(12345678910)
     alpha = 1.5
     beta = 3
-    lamda = Distributions.Gamma(alpha, beta).generate(1000000)
-    sims = Distributions.Exponential(lamda).generate(1000000)
+    lamda = distributions.Gamma(alpha, beta).generate(1000000)
+    sims = distributions.Exponential(lamda).generate(1000000)
     sims_mean = sims.mean()
     sims_std = sims.std()
     assert np.isclose(sims_mean, alpha * beta, 1e-2)
@@ -56,7 +56,7 @@ def test_Beta():
     beta = 3
     scale = 10000000
     loc = 1000000
-    dist = Distributions.Beta(alpha, beta, scale, loc)
+    dist = distributions.Beta(alpha, beta, scale, loc)
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000
     assert np.allclose(
@@ -79,7 +79,7 @@ def test_GPD():
     shape = 0.25
     scale = 100000
     threshold = 1000000
-    dist = Distributions.GPD(shape, scale, threshold)
+    dist = distributions.GPD(shape, scale, threshold)
     assert dist.cdf(1000000) == 0.0
     assert dist.cdf(1500000) == pytest.approx(0.960981557689, 1e-4)
     assert dist.invcdf(0) == 1000000
@@ -98,7 +98,7 @@ def test_Burr():
     shape = 3
     scale = 100000
     loc = 1000000
-    dist = Distributions.Burr(power, shape, scale, loc)
+    dist = distributions.Burr(power, shape, scale, loc)
     assert dist.cdf(1000000) == 0.0
     assert dist.cdf(1500000) == pytest.approx(0.9999431042330451, 1e-8)
     assert dist.invcdf(0) == 1000000
@@ -124,7 +124,7 @@ def test_InverseBurr():
     shape = 5
     scale = 100000
     loc = 1000000
-    dist = Distributions.InverseBurr(power, shape, scale, loc)
+    dist = distributions.InverseBurr(power, shape, scale, loc)
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000
 
@@ -150,7 +150,7 @@ def test_Logistic():
     set_random_seed(12345678910)
     mu = 2.5
     sigma = 2
-    dist = Distributions.Logistic(mu, sigma)
+    dist = distributions.Logistic(mu, sigma)
     assert dist.cdf(2.5) == 0.5
     assert dist.invcdf(0.5) == 2.5
     assert np.allclose(
@@ -170,7 +170,7 @@ def test_LogLogistic():
     shape = 4
     scale = 100000
     loc = 1000000
-    dist = Distributions.LogLogistic(shape, scale, loc)
+    dist = distributions.LogLogistic(shape, scale, loc)
     assert dist.cdf(1000000) == 0.0
     assert dist.cdf(1500000) == pytest.approx(0.9984025559105432, 1e-8)
     assert dist.invcdf(0) == 1000000
@@ -196,7 +196,7 @@ def test_ParaLogistic():
     shape = 2.5
     scale = 100000
     loc = 1000000
-    dist = Distributions.Paralogistic(shape, scale, loc)
+    dist = distributions.Paralogistic(shape, scale, loc)
 
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000
@@ -217,7 +217,7 @@ def test_InverseParaLogistic():
     shape = 5
     scale = 100000
     loc = 1000000
-    dist = Distributions.InverseParalogistic(shape, scale, loc)
+    dist = distributions.InverseParalogistic(shape, scale, loc)
 
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000
@@ -246,7 +246,7 @@ def test_Weibull():
     shape = 2
     scale = 1000000
     loc = 1000000
-    dist = Distributions.Weibull(shape, scale, loc)
+    dist = distributions.Weibull(shape, scale, loc)
 
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000
@@ -267,7 +267,7 @@ def test_InverseWeibull():
     shape = 4
     scale = 1000000
     loc = 1000000
-    dist = Distributions.InverseWeibull(shape, scale, loc)
+    dist = distributions.InverseWeibull(shape, scale, loc)
 
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000
@@ -287,7 +287,7 @@ def test_Exponential():
     set_random_seed(12345678910)
     scale = 1000000
     loc = 1000000
-    dist = Distributions.Exponential(scale, loc)
+    dist = distributions.Exponential(scale, loc)
 
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000
@@ -305,7 +305,7 @@ def test_InverseExponential():
     set_random_seed(12345678910)
     scale = 1000000
     loc = 1000000
-    dist = Distributions.InverseExponential(scale, loc)
+    dist = distributions.InverseExponential(scale, loc)
 
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000
@@ -319,7 +319,7 @@ def test_Gamma():
     scale = 1000000
     shape = 4.5
     loc = 1000000
-    dist = Distributions.Gamma(shape, scale, loc)
+    dist = distributions.Gamma(shape, scale, loc)
 
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000
@@ -339,7 +339,7 @@ def test_LogNormal():
     set_random_seed(12345678910)
     mu = 8
     sigma = 1.25
-    dist = Distributions.LogNormal(mu, sigma)
+    dist = distributions.LogNormal(mu, sigma)
 
     assert dist.cdf(0) == 0.0
     assert dist.invcdf(0) == 0
@@ -363,7 +363,7 @@ def test_InverseGamma():
     scale = 1000000
     shape = 3.5
     loc = 1000000
-    dist = Distributions.InverseGamma(shape, scale, loc)
+    dist = distributions.InverseGamma(shape, scale, loc)
 
     assert dist.cdf(1000000) == 0.0
     assert dist.invcdf(0) == 1000000

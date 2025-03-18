@@ -1,7 +1,6 @@
-from .config import xp
-from .FrequencySeverity import FreqSevSims
+from .config import xp as np
+from .frequency_severity import FreqSevSims
 from dataclasses import dataclass
-import numpy as np
 from .variables import StochasticScalar
 
 
@@ -75,7 +74,7 @@ class XoL:
             aggregate_limit / limit - 1 if aggregate_limit is not None else None
         )
         self.reinstatement_premium_cost = (
-            xp.array(reinstatement_cost) if reinstatement_cost is not None else None
+            np.array(reinstatement_cost) if reinstatement_cost is not None else None
         )
 
     def apply(self, claims: FreqSevSims) -> ContractResults:
@@ -110,8 +109,11 @@ class XoL:
         """
         # apply franchise
         if self.franchise != 0 or self.reverse_franchise != np.inf:
+            is_in_window = (claims >= self.franchise) & (
+                claims < self.reverse_franchise
+            )
             claims = np.where(
-                (claims >= self.franchise) & (claims < self.reverse_franchise),
+                is_in_window,
                 claims,
                 0,
             )
@@ -135,8 +137,8 @@ class XoL:
             aggregate_limit,
         )
         non_zero_recoveries = aggregate_recoveries != 0
-        ratio = xp.ones(aggregate_recoveries_pre_agg.values.shape)
-        xp.putmask(
+        ratio = np.ones(aggregate_recoveries_pre_agg.values.shape)
+        np.putmask(
             ratio,
             non_zero_recoveries.values,
             np.divide(
@@ -154,19 +156,20 @@ class XoL:
             cumulative_reinstatement_cost = np.cumsum(self.reinstatement_premium_cost)
             limits_used = aggregate_recoveries / self.limit
             reinstatements_used = np.minimum(limits_used, self.num_reinstatements)
-            reinstatements_used_full = np.floor(reinstatements_used).values.astype(int)
+            reinstatements_used_full = StochasticScalar(
+                np.floor(reinstatements_used).values.astype(int)
+            )
             reinstatements_used_fraction = (
                 reinstatements_used - reinstatements_used_full
             )
             reinstatement_number = np.maximum(reinstatements_used_full - 1, 0)
             reinstatement_premium_proportion = self.reinstatement_premium_cost[
-                reinstatement_number
+                reinstatement_number.values
             ] * reinstatements_used_fraction + np.where(
-                reinstatements_used_full > 0,
-                cumulative_reinstatement_cost[reinstatement_number],
+                reinstatements_used_full.values > 0,
+                cumulative_reinstatement_cost[reinstatement_number.values],
                 0,
             )
-
             reinstatement_premium = reinstatement_premium_proportion * self.premium
             results.reinstatement_premium = reinstatement_premium
         self.calc_summary(claims, aggregate_recoveries)
@@ -302,7 +305,7 @@ class XoLTower:
             ContractResults: The results of applying the XoL Tower to the claims.
         """
         recoveries = claims.copy() * 0
-        reinstatement_premium = StochasticScalar(xp.zeros(claims.n_sims))
+        reinstatement_premium = StochasticScalar(np.zeros(claims.n_sims))
         for layer in self.layers:
             layer_results = layer.apply(claims)
             recoveries += layer_results.recoveries
